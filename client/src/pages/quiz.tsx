@@ -17,7 +17,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<number[]>([]);
 
   const { data: quiz, isLoading } = useQuery<Quiz>({
-    queryKey: ["/api/quizzes", id],
+    queryKey: [`/api/quizzes/${id}`], // Fixed: Added id to the query key
   });
 
   const mutation = useMutation({
@@ -38,7 +38,10 @@ export default function QuizPage() {
     );
   }
 
-  if (!quiz) return null;
+  if (!quiz) {
+    console.error("No quiz data found for id:", id);
+    return null;
+  }
 
   const question = quiz.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
@@ -66,7 +69,7 @@ export default function QuizPage() {
     <div className="min-h-screen bg-[#F8F9FA] p-4">
       <div className="max-w-2xl mx-auto space-y-6">
         <Progress value={progress} className="h-2" />
-        
+
         <div className="flex justify-between text-sm text-gray-500">
           <span>Question {currentQuestion + 1} of {quiz.questions.length}</span>
           <span>{quiz.subject} - {quiz.gradeLevel}</span>
@@ -102,7 +105,7 @@ export default function QuizPage() {
           >
             <ChevronLeft className="w-4 h-4 mr-1" /> Previous
           </Button>
-          
+
           <Button
             onClick={handleNext}
             disabled={answers[currentQuestion] === undefined || mutation.isPending}
