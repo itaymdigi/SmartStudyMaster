@@ -14,20 +14,20 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `You are a professional teacher creating a quiz about "${subject}" for ${gradeLevel} students.
-Based on these study materials: "${materials}"
+  const prompt = `Generate 5 multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
+Study materials: ${materials}
 
-Create 5 multiple-choice questions that:
+Create questions that:
 1. Test understanding of the materials
-2. Are written in the same language as the study materials
-3. Have exactly 4 answer options each
-4. Include clear explanations
+2. Have exactly 4 answer options
+3. Include one correct answer and three plausible but incorrect options
+4. Use Hebrew for all text
 
-Format the response as a strict JSON object:
+Format response as a strict JSON object:
 {
   "questions": [
     {
-      "question": "Question text here?",
+      "question": "Question text here",
       "options": [
         "First option",
         "Second option",
@@ -40,36 +40,29 @@ Format the response as a strict JSON object:
 }
 
 Important:
-- Keep all text in the same language as the input
+- Use Hebrew for all text
 - The correctAnswer must be 0-3 (index of correct option)
-- Generate exactly 5 questions
-- Questions must directly relate to the study materials`;
+- Generate exactly 5 questions`;
 
   try {
-    // Get the generative model
     const model = genAI.getGenerativeModel({ 
       model: "gemini-pro",
       generationConfig: {
         temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
+        maxOutputTokens: 2048,
       }
     });
 
-    // Generate content
-    const result = await model.generateContent([
-      {
-        role: "user",
-        parts: [{
-          text: prompt
-        }]
-      }
-    ]);
+    const result = await model.generateContent({
+      contents: [{
+        text: prompt
+      }]
+    });
 
     const response = await result.response;
     const text = response.text();
 
-    // Extract JSON from response (handle potential text wrapping)
+    // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in response:", text);
@@ -79,35 +72,21 @@ Important:
     const parsedContent = JSON.parse(jsonMatch[0]);
 
     if (!Array.isArray(parsedContent.questions)) {
-      console.error("Invalid response structure:", parsedContent);
       throw new Error("Invalid response format: questions array not found");
     }
 
-    // Validate each question
-    const validQuestions = parsedContent.questions.filter((q: any) => 
-      q.question && 
-      Array.isArray(q.options) && 
-      q.options.length === 4 && 
-      typeof q.correctAnswer === 'number' && 
-      q.correctAnswer >= 0 && 
-      q.correctAnswer <= 3
-    );
-
-    if (validQuestions.length === 0) {
-      throw new Error("No valid questions found in response");
-    }
-
-    return validQuestions;
+    return parsedContent.questions;
   } catch (error) {
     console.error("Error generating questions:", error);
-    // Return default questions in Hebrew if the API fails
+    // Return descriptive default questions in Hebrew
+    const topics = materials.split(' ').slice(0, 3).join(' ');
     return Array.from({ length: 5 }, (_, i) => ({
-      question: `שאלה לדוגמה ${i + 1} ב${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
+      question: `שאלה ${i + 1}: ${topics}...`,
       options: [
-        `תשובה א' לשאלה ${i + 1}`,
-        `תשובה ב' לשאלה ${i + 1}`,
-        `תשובה ג' לשאלה ${i + 1}`,
-        `תשובה ד' לשאלה ${i + 1}`
+        `אפשרות א': תשובה אפשרית לשאלה ${i + 1}`,
+        `אפשרות ב': תשובה אפשרית לשאלה ${i + 1}`,
+        `אפשרות ג': תשובה אפשרית לשאלה ${i + 1}`,
+        `אפשרות ד': תשובה אפשרית לשאלה ${i + 1}`
       ],
       correctAnswer: Math.floor(Math.random() * 4)
     }));

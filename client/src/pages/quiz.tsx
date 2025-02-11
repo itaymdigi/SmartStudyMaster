@@ -91,13 +91,13 @@ export default function QuizPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] p-4">
+    <div className="min-h-screen bg-[#F8F9FA] p-4" dir="rtl">
       <div className="max-w-2xl mx-auto space-y-6">
         <Progress value={progress} className="h-2" />
 
         <div className="flex justify-between text-sm text-gray-500">
-          <span>Question {currentQuestion + 1} of {quiz.questions.length}</span>
           <span>{quiz.subject} - {quiz.gradeLevel}</span>
+          <span>שאלה {currentQuestion + 1} מתוך {quiz.questions.length}</span>
         </div>
 
         <Card>
@@ -115,7 +115,7 @@ export default function QuizPage() {
                   <RadioGroupItem value={index.toString()} id={`option-${index}`} />
                   <Label
                     htmlFor={`option-${index}`}
-                    className={`flex-1 cursor-pointer ${
+                    className={`flex-1 cursor-pointer mr-2 ${
                       showFeedback && answers[currentQuestion] === index
                         ? answers[currentQuestion] === question.correctAnswer
                           ? "text-green-600"
@@ -131,9 +131,9 @@ export default function QuizPage() {
 
             {showFeedback && answers[currentQuestion] !== question.correctAnswer && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
-                <p className="font-medium">Incorrect Answer</p>
+                <p className="font-medium">תשובה לא נכונה</p>
                 <p className="text-sm mt-1">
-                  The correct answer is: {question.options[question.correctAnswer]}
+                  התשובה הנכונה היא: {question.options[question.correctAnswer]}
                 </p>
               </div>
             )}
@@ -149,14 +149,14 @@ export default function QuizPage() {
             }}
             disabled={currentQuestion === 0}
           >
-            <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+            <ChevronRight className="w-4 h-4 ml-1" /> הקודם
           </Button>
 
           <Button
             variant="outline"
             onClick={() => setLocation("/")}
           >
-            Start Over
+            התחל מחדש
           </Button>
 
           <Button
@@ -165,9 +165,9 @@ export default function QuizPage() {
             className="bg-[#4263EB] hover:bg-[#4263EB]/90"
           >
             {currentQuestion === quiz.questions.length - 1 ? (
-              mutation.isPending ? "Submitting..." : "Submit Quiz"
+              mutation.isPending ? "שולח..." : "סיים מבחן"
             ) : (
-              <>Next <ChevronRight className="w-4 h-4 ml-1" /></>
+              <>הבא <ChevronLeft className="w-4 h-4 mr-1" /></>
             )}
           </Button>
         </div>
