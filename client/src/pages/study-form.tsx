@@ -13,7 +13,7 @@ import { BookOpen } from "lucide-react";
 
 export default function StudyFormPage() {
   const [, setLocation] = useLocation();
-  
+
   const form = useForm<StudyForm>({
     resolver: zodResolver(studyFormSchema),
     defaultValues: {
@@ -26,10 +26,20 @@ export default function StudyFormPage() {
   const mutation = useMutation({
     mutationFn: async (data: StudyForm) => {
       const res = await apiRequest("POST", "/api/quizzes", data);
-      return res.json();
+      const json = await res.json();
+      if (!json.id) {
+        throw new Error("Invalid response from server");
+      }
+      return json;
     },
     onSuccess: (data) => {
-      setLocation(`/quiz/${data.id}`);
+      if (data.id) {
+        setLocation(`/quiz/${data.id}`);
+      }
+    },
+    onError: (error) => {
+      console.error("Error creating quiz:", error);
+      // You might want to show an error toast here
     }
   });
 
@@ -61,7 +71,7 @@ export default function StudyFormPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="gradeLevel"
@@ -75,7 +85,7 @@ export default function StudyFormPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="materials"

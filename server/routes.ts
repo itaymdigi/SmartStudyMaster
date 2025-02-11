@@ -9,7 +9,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/quizzes", async (req, res) => {
     try {
       const formData = studyFormSchema.parse(req.body);
-      
+
       // Simulate AI question generation
       const questions = Array.from({ length: 30 }, (_, i) => ({
         question: `Sample question ${i + 1} about ${formData.subject}?`,
@@ -27,8 +27,10 @@ export function registerRoutes(app: Express): Server {
         questions
       });
 
+      console.log("Created quiz:", quiz); // Add logging
       res.json(quiz);
     } catch (err) {
+      console.error("Error creating quiz:", err); // Add error logging
       if (err instanceof ZodError) {
         res.status(400).json({ message: err.errors[0].message });
       } else {
@@ -39,11 +41,16 @@ export function registerRoutes(app: Express): Server {
 
   // Get quiz by id
   app.get("/api/quizzes/:id", async (req, res) => {
-    const quiz = await storage.getQuiz(Number(req.params.id));
-    if (!quiz) {
-      return res.status(404).json({ message: "Quiz not found" });
+    try {
+      const quiz = await storage.getQuiz(Number(req.params.id));
+      if (!quiz) {
+        return res.status(404).json({ message: "Quiz not found" });
+      }
+      res.json(quiz);
+    } catch (err) {
+      console.error("Error fetching quiz:", err); // Add error logging
+      res.status(500).json({ message: "Failed to fetch quiz" });
     }
-    res.json(quiz);
   });
 
   // Submit quiz score
@@ -57,6 +64,7 @@ export function registerRoutes(app: Express): Server {
       const quiz = await storage.updateQuizScore(Number(req.params.id), score);
       res.json(quiz);
     } catch (err) {
+      console.error("Error updating score:", err); // Add error logging
       res.status(500).json({ message: "Failed to update score" });
     }
   });
