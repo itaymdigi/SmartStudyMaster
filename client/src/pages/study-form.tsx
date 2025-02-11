@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,15 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function StudyFormPage() {
   const [, setLocation] = useLocation();
+  const params = new URLSearchParams(window.location.search);
   const { toast } = useToast();
 
   const form = useForm<StudyForm>({
     resolver: zodResolver(studyFormSchema),
     defaultValues: {
-      subject: "",
-      gradeLevel: "",
-      materials: ""
+      subject: params.get("subject") || "",
+      gradeLevel: params.get("gradeLevel") || "",
+      materials: params.get("materials") || ""
     }
   });
 
@@ -42,8 +43,8 @@ export default function StudyFormPage() {
     onError: (error) => {
       console.error("Error creating quiz:", error);
       toast({
-        title: "Error",
-        description: "Failed to generate quiz. Please try again.",
+        title: "שגיאה",
+        description: "אירעה שגיאה ביצירת המבחן. אנא נסה שוב.",
         variant: "destructive"
       });
     }
@@ -115,7 +116,7 @@ export default function StudyFormPage() {
                 className="w-full bg-[#4263EB] hover:bg-[#4263EB]/90"
                 disabled={mutation.isPending}
               >
-                {mutation.isPending ? "Generating Quiz..." : "Start Quiz"}
+                {mutation.isPending ? "מכין מבחן..." : "התחל מבחן"}
               </Button>
             </form>
           </Form>

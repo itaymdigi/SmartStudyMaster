@@ -188,7 +188,14 @@ export default function QuizPage() {
 
           <Button
             variant="outline"
-            onClick={() => setLocation("/")}
+            onClick={() => {
+              const searchParams = new URLSearchParams({
+                subject: quiz.subject,
+                gradeLevel: quiz.gradeLevel,
+                materials: quiz.materials
+              });
+              setLocation(`/?${searchParams.toString()}`);
+            }}
           >
             התחל מחדש
           </Button>

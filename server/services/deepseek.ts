@@ -13,12 +13,22 @@ export interface QuizQuestion {
   explanation?: string;
 }
 
+// Helper function to shuffle array
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export async function generateQuizQuestions(
   subject: string,
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 5 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
+  const prompt = `Generate 8 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
 Study materials: ${materials}
 
 Create questions that:
@@ -50,7 +60,7 @@ Important guidelines:
 - Use Hebrew for all text including explanations
 - Each question must have exactly 4 options
 - The correctAnswer must be 0-3 (index of correct option)
-- Generate exactly 5 questions
+- Generate 8 questions (we will randomly select 5)
 - Make questions progressively more challenging
 - Ensure questions test different aspects of the material
 - Add clear, concise explanations that help students learn`;
@@ -68,7 +78,7 @@ Important guidelines:
           content: prompt
         }
       ],
-      temperature: 0.7,
+      temperature: 0.8,
       response_format: { type: "json_object" }
     });
 
@@ -94,11 +104,12 @@ Important guidelines:
         typeof q.explanation === 'string'
       );
 
-      if (validQuestions.length === 0) {
-        throw new Error("No valid questions generated");
+      if (validQuestions.length < 5) {
+        throw new Error("Not enough valid questions generated");
       }
 
-      return validQuestions;
+      // Shuffle and select 5 questions
+      return shuffleArray(validQuestions).slice(0, 5);
     } catch (parseError) {
       console.error("Error parsing response:", parseError);
       throw new Error("Failed to parse quiz questions");
