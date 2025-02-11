@@ -89,6 +89,26 @@ export default function QuizPage() {
     }
   };
 
+  const handleStartOver = async () => {
+    try {
+      // Create a new quiz with the same subject and grade level
+      const res = await apiRequest("POST", "/api/quizzes", {
+        subject: quiz.subject,
+        gradeLevel: quiz.gradeLevel,
+        materials: quiz.materials
+      });
+      const newQuiz = await res.json();
+      setLocation(`/quiz/${newQuiz.id}`);
+    } catch (error) {
+      console.error("Error creating new quiz:", error);
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה ביצירת מבחן חדש. אנא נסה שוב.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-4" dir="rtl">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -188,7 +208,7 @@ export default function QuizPage() {
 
           <Button
             variant="outline"
-            onClick={() => setLocation("/")}
+            onClick={handleStartOver}
           >
             התחל מחדש
           </Button>
