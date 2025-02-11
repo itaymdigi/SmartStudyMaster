@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { studyFormSchema } from "@shared/schema";
 import { ZodError } from "zod";
-import { generateQuizQuestions } from "./services/deepseek";
+import { generateQuizQuestions } from "./services/gemini";
 
 export function registerRoutes(app: Express): Server {
   // Create new quiz
@@ -11,7 +11,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const formData = studyFormSchema.parse(req.body);
 
-      // Generate questions using Deepseek
+      // Generate questions using Gemini
       const questions = await generateQuizQuestions(
         formData.subject,
         formData.gradeLevel,
