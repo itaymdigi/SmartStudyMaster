@@ -10,6 +10,7 @@ export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
+  explanation?: string;
 }
 
 export async function generateQuizQuestions(
@@ -17,15 +18,16 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 5 multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
+  const prompt = `Generate 5 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
 Study materials: ${materials}
 
 Create questions that:
-1. Test understanding of key concepts from the materials
+1. Test deep understanding and critical thinking about the materials
 2. Have exactly 4 answer options
 3. Include one correct answer and three plausible but incorrect options
 4. Use Hebrew for all text
-5. Are relevant to the grade level
+5. Are at an appropriate difficulty level for ${gradeLevel}
+6. Include a brief explanation for the correct answer
 
 Format response as a strict JSON object:
 {
@@ -38,17 +40,20 @@ Format response as a strict JSON object:
         "Third option",
         "Fourth option"
       ],
-      "correctAnswer": 0
+      "correctAnswer": 0,
+      "explanation": "Brief explanation of why this is the correct answer"
     }
   ]
 }
 
-Important:
-- Use Hebrew for all text
+Important guidelines:
+- Use Hebrew for all text including explanations
 - Each question must have exactly 4 options
 - The correctAnswer must be 0-3 (index of correct option)
 - Generate exactly 5 questions
-- Make questions challenging but appropriate for the grade level`;
+- Make questions progressively more challenging
+- Ensure questions test different aspects of the material
+- Add clear, concise explanations that help students learn`;
 
   try {
     const response = await deepseek.chat.completions.create({
@@ -56,7 +61,7 @@ Important:
       messages: [
         {
           role: "system",
-          content: "You are an expert teacher who creates clear and engaging quiz questions in Hebrew."
+          content: "You are an expert Hebrew teacher who creates engaging, thought-provoking questions that promote deep learning."
         },
         {
           role: "user",
@@ -85,7 +90,8 @@ Important:
         q.options.length === 4 && 
         typeof q.correctAnswer === 'number' && 
         q.correctAnswer >= 0 && 
-        q.correctAnswer <= 3
+        q.correctAnswer <= 3 &&
+        typeof q.explanation === 'string'
       );
 
       if (validQuestions.length === 0) {
@@ -108,7 +114,8 @@ Important:
         `תשובה ג' לשאלה ${i + 1}`,
         `תשובה ד' לשאלה ${i + 1}`
       ],
-      correctAnswer: Math.floor(Math.random() * 4)
+      correctAnswer: Math.floor(Math.random() * 4),
+      explanation: `הסבר לתשובה הנכונה לשאלה ${i + 1}`
     }));
   }
 }

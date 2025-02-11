@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 export default function QuizPage() {
   const { id } = useParams();
@@ -59,6 +59,10 @@ export default function QuizPage() {
   const question = quiz.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
 
+  const correctAnswers = answers.reduce((acc, answer, index) => {
+    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
+  }, 0);
+
   const handleAnswer = (value: string) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = parseInt(value);
@@ -71,12 +75,7 @@ export default function QuizPage() {
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
-      // Calculate score
-      const correctAnswers = answers.reduce((acc, answer, index) => {
-        return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
-      }, 0);
       const score = Math.round((correctAnswers / quiz.questions.length) * 100);
-
       try {
         mutation.mutate(score);
       } catch (error) {
@@ -93,16 +92,31 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-4" dir="rtl">
       <div className="max-w-2xl mx-auto space-y-6">
-        <Progress value={progress} className="h-2" />
-
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>{quiz.subject} - {quiz.gradeLevel}</span>
-          <span>שאלה {currentQuestion + 1} מתוך {quiz.questions.length}</span>
+        <div className="flex flex-col gap-2">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">{quiz.subject} - {quiz.gradeLevel}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-green-600 flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" />
+                {correctAnswers}
+              </span>
+              <span className="text-red-600 flex items-center gap-1">
+                <XCircle className="w-4 h-4" />
+                {currentQuestion + 1 - correctAnswers}
+              </span>
+              <span className="text-gray-500">
+                שאלה {currentQuestion + 1} מתוך {quiz.questions.length}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <Card>
+        <Card className="border-2">
           <CardHeader>
-            <CardTitle className="text-xl font-medium">{question.question}</CardTitle>
+            <CardTitle className="text-xl font-medium leading-normal">
+              {question.question}
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <RadioGroup
@@ -112,18 +126,22 @@ export default function QuizPage() {
             >
               {question.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2 space-x-reverse">
-                  <div className="flex items-center">
-                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                  <div className="flex items-center w-full">
+                    <RadioGroupItem
+                      value={index.toString()}
+                      id={`option-${index}`}
+                      className="ml-2"
+                    />
                     <Label
                       htmlFor={`option-${index}`}
-                      className={`mr-2 cursor-pointer select-none ${
+                      className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
                         showFeedback
                           ? index === question.correctAnswer
-                            ? "text-green-600 font-medium"
+                            ? "bg-green-50 text-green-700 font-medium"
                             : answers[currentQuestion] === index
-                            ? "text-red-600"
-                            : ""
-                          : ""
+                            ? "bg-red-50 text-red-700"
+                            : "hover:bg-gray-50"
+                          : "hover:bg-gray-50"
                       }`}
                     >
                       {option}
@@ -133,18 +151,28 @@ export default function QuizPage() {
               ))}
             </RadioGroup>
 
-            {showFeedback && answers[currentQuestion] !== question.correctAnswer && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
-                <p className="font-medium">תשובה לא נכונה</p>
-                <p className="text-sm mt-1">
-                  התשובה הנכונה היא: {question.options[question.correctAnswer]}
+            {showFeedback && (
+              <div className={`mt-4 p-4 rounded-md ${
+                answers[currentQuestion] === question.correctAnswer
+                  ? "bg-green-50 border border-green-200 text-green-800"
+                  : "bg-red-50 border border-red-200 text-red-800"
+              }`}>
+                <p className="font-medium">
+                  {answers[currentQuestion] === question.correctAnswer
+                    ? "תשובה נכונה!"
+                    : "תשובה לא נכונה"}
                 </p>
+                {question.explanation && (
+                  <p className="mt-2 text-sm">
+                    {question.explanation}
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <Button
             variant="outline"
             onClick={() => {
@@ -152,8 +180,10 @@ export default function QuizPage() {
               setCurrentQuestion(prev => prev - 1);
             }}
             disabled={currentQuestion === 0}
+            className="gap-2"
           >
-            <ChevronRight className="w-4 h-4 ml-1" /> הקודם
+            <ChevronRight className="w-4 h-4" />
+            הקודם
           </Button>
 
           <Button
@@ -166,12 +196,15 @@ export default function QuizPage() {
           <Button
             onClick={handleNext}
             disabled={answers[currentQuestion] === undefined || mutation.isPending}
-            className="bg-[#4263EB] hover:bg-[#4263EB]/90"
+            className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
           >
             {currentQuestion === quiz.questions.length - 1 ? (
               mutation.isPending ? "שולח..." : "סיים מבחן"
             ) : (
-              <>הבא <ChevronLeft className="w-4 h-4 mr-1" /></>
+              <>
+                הבא
+                <ChevronLeft className="w-4 h-4" />
+              </>
             )}
           </Button>
         </div>
