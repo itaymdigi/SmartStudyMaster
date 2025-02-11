@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { StudyForm, studyFormSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { BookOpen } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StudyFormPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const form = useForm<StudyForm>({
     resolver: zodResolver(studyFormSchema),
@@ -39,7 +41,11 @@ export default function StudyFormPage() {
     },
     onError: (error) => {
       console.error("Error creating quiz:", error);
-      // You might want to show an error toast here
+      toast({
+        title: "Error",
+        description: "Failed to generate quiz. Please try again.",
+        variant: "destructive"
+      });
     }
   });
 

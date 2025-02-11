@@ -113,8 +113,8 @@ export default function QuizPage() {
               {question.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                  <Label 
-                    htmlFor={`option-${index}`} 
+                  <Label
+                    htmlFor={`option-${index}`}
                     className={`flex-1 cursor-pointer ${
                       showFeedback && answers[currentQuestion] === index
                         ? answers[currentQuestion] === question.correctAnswer
@@ -150,6 +150,13 @@ export default function QuizPage() {
             disabled={currentQuestion === 0}
           >
             <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/")}
+          >
+            Start Over
           </Button>
 
           <Button
