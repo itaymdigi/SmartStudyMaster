@@ -13,7 +13,14 @@ export class DatabaseStorage implements IStorage {
   async createQuiz(insertQuiz: InsertQuiz): Promise<Quiz> {
     const [quiz] = await db
       .insert(quizzes)
-      .values(insertQuiz)
+      .values({
+        subject: insertQuiz.subject,
+        gradeLevel: insertQuiz.gradeLevel,
+        materials: insertQuiz.materials,
+        questions: insertQuiz.questions,
+        score: null,
+        completed: false
+      })
       .returning();
     return quiz;
   }
