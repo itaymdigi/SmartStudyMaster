@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { studyFormSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import { generateQuizQuestions } from "./services/deepseek";
 
 export function registerRoutes(app: Express): Server {
   // Create new quiz
@@ -10,27 +11,22 @@ export function registerRoutes(app: Express): Server {
     try {
       const formData = studyFormSchema.parse(req.body);
 
-      // Simulate AI question generation
-      const questions = Array.from({ length: 30 }, (_, i) => ({
-        question: `Sample question ${i + 1} about ${formData.subject}?`,
-        options: [
-          `Option A for question ${i + 1}`,
-          `Option B for question ${i + 1}`,
-          `Option C for question ${i + 1}`,
-          `Option D for question ${i + 1}`
-        ],
-        correctAnswer: Math.floor(Math.random() * 4)
-      }));
+      // Generate questions using Deepseek
+      const questions = await generateQuizQuestions(
+        formData.subject,
+        formData.gradeLevel,
+        formData.materials
+      );
 
       const quiz = await storage.createQuiz({
         ...formData,
         questions
       });
 
-      console.log("Created quiz:", quiz); // Add logging
+      console.log("Created quiz:", quiz);
       res.json(quiz);
     } catch (err) {
-      console.error("Error creating quiz:", err); // Add error logging
+      console.error("Error creating quiz:", err);
       if (err instanceof ZodError) {
         res.status(400).json({ message: err.errors[0].message });
       } else {
@@ -48,7 +44,7 @@ export function registerRoutes(app: Express): Server {
       }
       res.json(quiz);
     } catch (err) {
-      console.error("Error fetching quiz:", err); // Add error logging
+      console.error("Error fetching quiz:", err);
       res.status(500).json({ message: "Failed to fetch quiz" });
     }
   });
@@ -64,7 +60,7 @@ export function registerRoutes(app: Express): Server {
       const quiz = await storage.updateQuizScore(Number(req.params.id), score);
       res.json(quiz);
     } catch (err) {
-      console.error("Error updating score:", err); // Add error logging
+      console.error("Error updating score:", err);
       res.status(500).json({ message: "Failed to update score" });
     }
   });
