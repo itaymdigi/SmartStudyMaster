@@ -1,4 +1,7 @@
 import { Quiz, InsertQuiz } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { quizzes } from "@shared/schema";
 
 export interface IStorage {
   createQuiz(quiz: InsertQuiz): Promise<Quiz>;
@@ -6,43 +9,33 @@ export interface IStorage {
   updateQuizScore(id: number, score: number): Promise<Quiz>;
 }
 
-export class MemStorage implements IStorage {
-  private quizzes: Map<number, Quiz>;
-  private currentId: number;
-
-  constructor() {
-    this.quizzes = new Map();
-    this.currentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async createQuiz(insertQuiz: InsertQuiz): Promise<Quiz> {
-    const id = this.currentId++;
-    const quiz: Quiz = { 
-      ...insertQuiz, 
-      id,
-      score: null,
-      completed: false
-    };
-    this.quizzes.set(id, quiz);
+    const [quiz] = await db
+      .insert(quizzes)
+      .values(insertQuiz)
+      .returning();
     return quiz;
   }
 
   async getQuiz(id: number): Promise<Quiz | undefined> {
-    return this.quizzes.get(id);
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.id, id));
+    return quiz;
   }
 
   async updateQuizScore(id: number, score: number): Promise<Quiz> {
-    const quiz = this.quizzes.get(id);
+    const [quiz] = await db
+      .update(quizzes)
+      .set({ score, completed: true })
+      .where(eq(quizzes.id, id))
+      .returning();
+
     if (!quiz) throw new Error("Quiz not found");
-    
-    const updatedQuiz = {
-      ...quiz,
-      score,
-      completed: true
-    };
-    this.quizzes.set(id, updatedQuiz);
-    return updatedQuiz;
+    return quiz;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
