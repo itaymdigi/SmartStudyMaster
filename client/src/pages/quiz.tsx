@@ -35,8 +35,8 @@ export default function QuizPage() {
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to submit quiz. Please try again.",
+        title: "שגיאה",
+        description: "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
         variant: "destructive",
       });
       console.error("Error submitting quiz:", error);
@@ -82,8 +82,8 @@ export default function QuizPage() {
       } catch (error) {
         console.error("Error calculating score:", error);
         toast({
-          title: "Error",
-          description: "Failed to calculate score. Please try again.",
+          title: "שגיאה",
+          description: "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
           variant: "destructive",
         });
       }
@@ -102,29 +102,33 @@ export default function QuizPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">{question.question}</CardTitle>
+            <CardTitle className="text-xl font-medium">{question.question}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <RadioGroup
               value={answers[currentQuestion]?.toString()}
               onValueChange={handleAnswer}
               className="space-y-4"
             >
               {question.options.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                  <Label
-                    htmlFor={`option-${index}`}
-                    className={`flex-1 cursor-pointer mr-2 ${
-                      showFeedback && answers[currentQuestion] === index
-                        ? answers[currentQuestion] === question.correctAnswer
-                          ? "text-green-600"
-                          : "text-red-600"
-                        : ""
-                    }`}
-                  >
-                    {option}
-                  </Label>
+                <div key={index} className="flex items-center space-x-2 space-x-reverse">
+                  <div className="flex items-center">
+                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                    <Label
+                      htmlFor={`option-${index}`}
+                      className={`mr-2 cursor-pointer select-none ${
+                        showFeedback
+                          ? index === question.correctAnswer
+                            ? "text-green-600 font-medium"
+                            : answers[currentQuestion] === index
+                            ? "text-red-600"
+                            : ""
+                          : ""
+                      }`}
+                    >
+                      {option}
+                    </Label>
+                  </div>
                 </div>
               ))}
             </RadioGroup>
