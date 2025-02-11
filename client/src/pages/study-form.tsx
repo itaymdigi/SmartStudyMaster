@@ -7,15 +7,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { StudyForm, studyFormSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
 export default function StudyFormPage() {
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(window.location.search);
   const { toast } = useToast();
+  const [progress, setProgress] = useState(0);
 
   const form = useForm<StudyForm>({
     resolver: zodResolver(studyFormSchema),
@@ -49,6 +52,26 @@ export default function StudyFormPage() {
       });
     }
   });
+
+  // Simulate progress while generating questions
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (mutation.isPending) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
+    } else {
+      setProgress(100);
+    }
+    return () => clearInterval(interval);
+  }, [mutation.isPending]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-4 flex items-center justify-center">
@@ -111,12 +134,28 @@ export default function StudyFormPage() {
                 )}
               />
 
+              {mutation.isPending && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-sm text-center text-gray-500">
+                    Preparing your personalized quiz... {progress}%
+                  </p>
+                </div>
+              )}
+
               <Button 
                 type="submit" 
                 className="w-full bg-[#4263EB] hover:bg-[#4263EB]/90"
                 disabled={mutation.isPending}
               >
-                {mutation.isPending ? "מכין מבחן..." : "התחל מבחן"}
+                {mutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    מכין מבחן...
+                  </div>
+                ) : (
+                  "התחל מבחן"
+                )}
               </Button>
             </form>
           </Form>

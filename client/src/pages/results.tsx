@@ -5,13 +5,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Quiz } from "@shared/schema";
 import confetti from 'canvas-confetti';
-import { Trophy, Home } from "lucide-react";
+import { Trophy, Home, Loader2 } from "lucide-react";
 
 export default function ResultsPage() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
 
-  const { data: quiz } = useQuery<Quiz>({
+  const { data: quiz, isLoading } = useQuery<Quiz>({
     queryKey: ["/api/quizzes", id],
   });
 
@@ -25,18 +25,26 @@ export default function ResultsPage() {
     }
   }, [quiz?.score]);
 
-  if (!quiz?.completed) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#4263EB]" />
+      </div>
+    );
+  }
+
+  if (!quiz) {
     setLocation("/");
     return null;
   }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-4 flex items-center justify-center">
-      <Card className="w-full max-w-lg text-center">
+      <Card className="w-full max-w-lg text-center animate-fade-in">
         <CardHeader>
           <div className="flex justify-center mb-4">
             {quiz.score >= 85 ? (
-              <Trophy className="w-16 h-16 text-[#FCC419]" />
+              <Trophy className="w-16 h-16 text-[#FCC419] animate-bounce" />
             ) : (
               <Trophy className="w-16 h-16 text-[#4263EB]" />
             )}
@@ -47,10 +55,10 @@ export default function ResultsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="text-4xl font-bold">
+          <div className="text-4xl font-bold animate-number">
             {quiz.score}%
           </div>
-          
+
           <div className="text-gray-600">
             {quiz.score >= 85 ? (
               "Excellent work! You've mastered this subject!"
@@ -59,6 +67,10 @@ export default function ResultsPage() {
             ) : (
               "Keep studying! Practice makes perfect."
             )}
+          </div>
+
+          <div className="text-sm text-gray-500">
+            Time spent: {quiz.timeSpent ? Math.floor(quiz.timeSpent / 60) : 0} minutes
           </div>
 
           <Button
