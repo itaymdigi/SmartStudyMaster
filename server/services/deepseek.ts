@@ -17,21 +17,38 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 10 multiple-choice questions for a ${gradeLevel} level quiz about ${subject}.
+  const prompt = `Generate 5 multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
 Study materials: ${materials}
 
-Format each question as a JSON object with the following structure:
+Create questions that:
+1. Test understanding of key concepts from the materials
+2. Have exactly 4 answer options
+3. Include one correct answer and three plausible but incorrect options
+4. Use Hebrew for all text
+5. Are relevant to the grade level
+
+Format response as a strict JSON object:
 {
   "questions": [
     {
-      "question": "the question text",
-      "options": ["option A", "option B", "option C", "option D"],
+      "question": "Question text here",
+      "options": [
+        "First option",
+        "Second option",
+        "Third option",
+        "Fourth option"
+      ],
       "correctAnswer": 0
     }
   ]
 }
 
-Return an array of these question objects.`;
+Important:
+- Use Hebrew for all text
+- Each question must have exactly 4 options
+- The correctAnswer must be 0-3 (index of correct option)
+- Generate exactly 5 questions
+- Make questions challenging but appropriate for the grade level`;
 
   try {
     const response = await deepseek.chat.completions.create({
@@ -39,13 +56,14 @@ Return an array of these question objects.`;
       messages: [
         {
           role: "system",
-          content: "You are an expert quiz generator. Generate challenging but fair questions."
+          content: "You are an expert teacher who creates clear and engaging quiz questions in Hebrew."
         },
         {
           role: "user",
           content: prompt
         }
       ],
+      temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
@@ -59,21 +77,36 @@ Return an array of these question objects.`;
       if (!Array.isArray(parsedContent.questions)) {
         throw new Error("Invalid response format: questions array not found");
       }
-      return parsedContent.questions;
+
+      // Validate the questions
+      const validQuestions = parsedContent.questions.filter(q => 
+        q.question && 
+        Array.isArray(q.options) && 
+        q.options.length === 4 && 
+        typeof q.correctAnswer === 'number' && 
+        q.correctAnswer >= 0 && 
+        q.correctAnswer <= 3
+      );
+
+      if (validQuestions.length === 0) {
+        throw new Error("No valid questions generated");
+      }
+
+      return validQuestions;
     } catch (parseError) {
       console.error("Error parsing response:", parseError);
       throw new Error("Failed to parse quiz questions");
     }
   } catch (error) {
     console.error("Error generating questions:", error);
-    // Return some default questions if the API fails
+    // Return default questions in Hebrew if the API fails
     return Array.from({ length: 5 }, (_, i) => ({
-      question: `Sample question ${i + 1} about ${subject}?`,
+      question: `שאלה ${i + 1} בנושא ${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
       options: [
-        `Option A for question ${i + 1}`,
-        `Option B for question ${i + 1}`,
-        `Option C for question ${i + 1}`,
-        `Option D for question ${i + 1}`
+        `תשובה א' לשאלה ${i + 1}`,
+        `תשובה ב' לשאלה ${i + 1}`,
+        `תשובה ג' לשאלה ${i + 1}`,
+        `תשובה ד' לשאלה ${i + 1}`
       ],
       correctAnswer: Math.floor(Math.random() * 4)
     }));
