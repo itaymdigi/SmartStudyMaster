@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -15,9 +16,12 @@ export default function QuizPage() {
   const [, setLocation] = useLocation();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: quiz, isLoading } = useQuery<Quiz>({
-    queryKey: [`/api/quizzes/${id}`], // Fixed: Added id to the query key
+    queryKey: [`/api/quizzes/${id}`],
   });
 
   const mutation = useMutation({
@@ -26,7 +30,16 @@ export default function QuizPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
       setLocation(`/results/${id}`);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to submit quiz. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error submitting quiz:", error);
     }
   });
 
@@ -50,9 +63,11 @@ export default function QuizPage() {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = parseInt(value);
     setAnswers(newAnswers);
+    setShowFeedback(true);
   };
 
   const handleNext = () => {
+    setShowFeedback(false);
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
@@ -61,7 +76,17 @@ export default function QuizPage() {
         return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
       }, 0);
       const score = Math.round((correctAnswers / quiz.questions.length) * 100);
-      mutation.mutate(score);
+
+      try {
+        mutation.mutate(score);
+      } catch (error) {
+        console.error("Error calculating score:", error);
+        toast({
+          title: "Error",
+          description: "Failed to calculate score. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -88,19 +113,40 @@ export default function QuizPage() {
               {question.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                  <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                  <Label 
+                    htmlFor={`option-${index}`} 
+                    className={`flex-1 cursor-pointer ${
+                      showFeedback && answers[currentQuestion] === index
+                        ? answers[currentQuestion] === question.correctAnswer
+                          ? "text-green-600"
+                          : "text-red-600"
+                        : ""
+                    }`}
+                  >
                     {option}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+
+            {showFeedback && answers[currentQuestion] !== question.correctAnswer && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+                <p className="font-medium">Incorrect Answer</p>
+                <p className="text-sm mt-1">
+                  The correct answer is: {question.options[question.correctAnswer]}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-between">
           <Button
             variant="outline"
-            onClick={() => setCurrentQuestion(prev => prev - 1)}
+            onClick={() => {
+              setShowFeedback(false);
+              setCurrentQuestion(prev => prev - 1);
+            }}
             disabled={currentQuestion === 0}
           >
             <ChevronLeft className="w-4 h-4 mr-1" /> Previous
