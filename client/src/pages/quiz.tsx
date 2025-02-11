@@ -193,8 +193,8 @@ export default function QuizPage() {
                 subject: quiz.subject,
                 gradeLevel: quiz.gradeLevel,
                 materials: quiz.materials
-              });
-              setLocation(`/?${searchParams.toString()}`);
+              }).toString();
+              window.location.href = `/?${searchParams}`;
             }}
           >
             התחל מחדש
