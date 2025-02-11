@@ -6,7 +6,8 @@ import { quizzes } from "@shared/schema";
 export interface IStorage {
   createQuiz(quiz: InsertQuiz): Promise<Quiz>;
   getQuiz(id: number): Promise<Quiz | undefined>;
-  updateQuizScore(id: number, score: number): Promise<Quiz>;
+  updateQuizScore(id: number, score: number, timeSpent?: number): Promise<Quiz>;
+  getQuizHistory(subject: string): Promise<Quiz[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -18,6 +19,7 @@ export class DatabaseStorage implements IStorage {
       questions: insertQuiz.questions,
       score: null,
       completed: false,
+      studyMode: insertQuiz.studyMode || false
     }).returning();
     return quiz;
   }
@@ -30,15 +32,27 @@ export class DatabaseStorage implements IStorage {
     return quiz;
   }
 
-  async updateQuizScore(id: number, score: number): Promise<Quiz> {
+  async updateQuizScore(id: number, score: number, timeSpent?: number): Promise<Quiz> {
     const [quiz] = await db
       .update(quizzes)
-      .set({ score, completed: true })
+      .set({ 
+        score, 
+        completed: true,
+        timeSpent: timeSpent || null 
+      })
       .where(eq(quizzes.id, id))
       .returning();
 
     if (!quiz) throw new Error("Quiz not found");
     return quiz;
+  }
+
+  async getQuizHistory(subject: string): Promise<Quiz[]> {
+    return db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.subject, subject))
+      .orderBy(quizzes.createdAt);
   }
 }
 

@@ -10,7 +10,7 @@ export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
-  explanation?: string;
+  explanation: string;
 }
 
 // Helper function to shuffle array
@@ -28,7 +28,7 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 8 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
+  const prompt = `Generate 12 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
 Study materials: ${materials}
 
 Create questions that:
@@ -60,7 +60,7 @@ Important guidelines:
 - Use Hebrew for all text including explanations
 - Each question must have exactly 4 options
 - The correctAnswer must be 0-3 (index of correct option)
-- Generate 8 questions (we will randomly select 5)
+- Generate 12 questions (we will randomly select 10)
 - Make questions progressively more challenging
 - Ensure questions test different aspects of the material
 - Add clear, concise explanations that help students learn`;
@@ -94,7 +94,7 @@ Important guidelines:
       }
 
       // Validate the questions
-      const validQuestions = parsedContent.questions.filter(q => 
+      const validQuestions: QuizQuestion[] = parsedContent.questions.filter((q: any) => 
         q.question && 
         Array.isArray(q.options) && 
         q.options.length === 4 && 
@@ -104,12 +104,12 @@ Important guidelines:
         typeof q.explanation === 'string'
       );
 
-      if (validQuestions.length < 5) {
+      if (validQuestions.length < 10) {
         throw new Error("Not enough valid questions generated");
       }
 
-      // Shuffle and select 5 questions
-      return shuffleArray(validQuestions).slice(0, 5);
+      // Shuffle and select 10 questions
+      return shuffleArray(validQuestions).slice(0, 10);
     } catch (parseError) {
       console.error("Error parsing response:", parseError);
       throw new Error("Failed to parse quiz questions");
@@ -117,7 +117,7 @@ Important guidelines:
   } catch (error) {
     console.error("Error generating questions:", error);
     // Return default questions in Hebrew if the API fails
-    return Array.from({ length: 5 }, (_, i) => ({
+    return Array.from({ length: 10 }, (_, i) => ({
       question: `שאלה ${i + 1} בנושא ${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
       options: [
         `תשובה א' לשאלה ${i + 1}`,
