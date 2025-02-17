@@ -31,6 +31,7 @@ export default function QuizPage() {
     queryKey: [`/api/quizzes/${id}`],
   });
 
+  // Handle loading state
   if (isLoading || !quiz) {
     return (
       <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
@@ -39,11 +40,12 @@ export default function QuizPage() {
     );
   }
 
+  const isEnglishQuiz = quiz.subject === "אנגלית";
+
   const correctAnswers = answers.reduce((acc, answer, index) => {
     return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
   }, 0);
 
-  const isEnglishQuiz = quiz.subject === "אנגלית";
   const score = Math.round((correctAnswers / quiz.questions.length) * 100);
 
   // Add useEffect for confetti animation
@@ -201,48 +203,12 @@ export default function QuizPage() {
                   gradeLevel: quiz.gradeLevel,
                   materials: quiz.materials
                 }).toString();
-                window.location.href = `/?${searchParams}`;
+                setLocation(`/?${searchParams}`);
               }}
               className="bg-[#4263EB] hover:bg-[#4263EB]/90 w-full"
             >
               {isEnglishQuiz ? "Start New Quiz" : "התחל מבחן חדש"}
             </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (displayMode === "flashcard") {
-      return (
-        <Card className="border-2 min-h-[300px] flex flex-col">
-          <CardHeader className="flex-1">
-            <CardTitle className="text-2xl font-medium leading-normal text-center">
-              {question.question}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => setShowFeedback(!showFeedback)}
-            >
-              {showFeedback
-                ? (isEnglishQuiz ? "Hide Answer" : "הסתר תשובה")
-                : (isEnglishQuiz ? "Show Answer" : "הצג תשובה")}
-            </Button>
-            {showFeedback && (
-              <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
-                <p className="font-medium">
-                  {isEnglishQuiz
-                    ? "Correct Answer: "
-                    : "התשובה הנכונה: "}
-                  {question.options[question.correctAnswer]}
-                </p>
-                {question.explanation && (
-                  <p className="mt-2 text-sm">{question.explanation}</p>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
       );
