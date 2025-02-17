@@ -28,7 +28,46 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 12 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
+  const isEnglish = subject === "אנגלית";
+
+  const prompt = isEnglish 
+    ? `Generate 12 English language learning questions for ${gradeLevel} grade students.
+Study materials: ${materials}
+
+Create questions that:
+1. Test English vocabulary, grammar, and comprehension
+2. Have exactly 4 answer options
+3. Include one correct answer and three plausible but incorrect options
+4. Use English for all text (questions, answers, and explanations)
+5. Are at an appropriate difficulty level for ${gradeLevel} grade
+6. Include a brief explanation for the correct answer
+
+Format response as a strict JSON object:
+{
+  "questions": [
+    {
+      "question": "Which word completes this sentence: 'The cat ___ on the mat'?",
+      "options": [
+        "sits",
+        "sitting",
+        "sat",
+        "sit"
+      ],
+      "correctAnswer": 0,
+      "explanation": "The present tense 'sits' is correct because we're describing a current state."
+    }
+  ]
+}
+
+Important guidelines:
+- All text must be in English
+- Each question must have exactly 4 options
+- The correctAnswer must be 0-3 (index of correct option)
+- Generate 12 questions (we will randomly select 10)
+- Make questions progressively more challenging
+- Ensure questions cover different aspects of English learning
+- Add clear, concise explanations that help students learn`
+    : `Generate 12 challenging multiple-choice questions in Hebrew about ${subject} for ${gradeLevel} students.
 Study materials: ${materials}
 
 Create questions that:
@@ -71,7 +110,9 @@ Important guidelines:
       messages: [
         {
           role: "system",
-          content: "You are an expert Hebrew teacher who creates engaging, thought-provoking questions that promote deep learning."
+          content: isEnglish 
+            ? "You are an expert English teacher who creates engaging, well-structured questions for English language learners."
+            : "You are an expert Hebrew teacher who creates engaging, thought-provoking questions that promote deep learning."
         },
         {
           role: "user",
@@ -116,17 +157,28 @@ Important guidelines:
     }
   } catch (error) {
     console.error("Error generating questions:", error);
-    // Return default questions in Hebrew if the API fails
+    // Return default questions in the appropriate language
     return Array.from({ length: 10 }, (_, i) => ({
-      question: `שאלה ${i + 1} בנושא ${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
-      options: [
-        `תשובה א' לשאלה ${i + 1}`,
-        `תשובה ב' לשאלה ${i + 1}`,
-        `תשובה ג' לשאלה ${i + 1}`,
-        `תשובה ד' לשאלה ${i + 1}`
-      ],
+      question: isEnglish
+        ? `Question ${i + 1} about ${materials.split(' ').slice(0, 3).join(' ')}...`
+        : `שאלה ${i + 1} בנושא ${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
+      options: isEnglish 
+        ? [
+            `Answer A for question ${i + 1}`,
+            `Answer B for question ${i + 1}`,
+            `Answer C for question ${i + 1}`,
+            `Answer D for question ${i + 1}`
+          ]
+        : [
+            `תשובה א' לשאלה ${i + 1}`,
+            `תשובה ב' לשאלה ${i + 1}`,
+            `תשובה ג' לשאלה ${i + 1}`,
+            `תשובה ד' לשאלה ${i + 1}`
+          ],
       correctAnswer: Math.floor(Math.random() * 4),
-      explanation: `הסבר לתשובה הנכונה לשאלה ${i + 1}`
+      explanation: isEnglish
+        ? `Explanation for the correct answer to question ${i + 1}`
+        : `הסבר לתשובה הנכונה לשאלה ${i + 1}`
     }));
   }
 }
