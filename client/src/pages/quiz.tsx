@@ -19,6 +19,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [displayMode, setDisplayMode] = useState<"standard" | "flashcard">("standard");
+  const [showFinalScore, setShowFinalScore] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -33,12 +34,14 @@ export default function QuizPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
-      setLocation(`/results/${id}`);
+      setShowFinalScore(true);
     },
     onError: (error) => {
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
+        title: quiz?.subject === "אנגלית" ? "Error" : "שגיאה",
+        description: quiz?.subject === "אנגלית" 
+          ? "An error occurred while submitting the quiz. Please try again."
+          : "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
         variant: "destructive",
       });
       console.error("Error submitting quiz:", error);
@@ -65,6 +68,9 @@ export default function QuizPage() {
     return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
   }, 0);
 
+  const isEnglishQuiz = quiz.subject === "אנגלית";
+  const score = Math.round((correctAnswers / quiz.questions.length) * 100);
+
   const handleAnswer = (value: string) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = parseInt(value);
@@ -77,14 +83,15 @@ export default function QuizPage() {
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
-      const score = Math.round((correctAnswers / quiz.questions.length) * 100);
       try {
         mutation.mutate(score);
       } catch (error) {
         console.error("Error calculating score:", error);
         toast({
-          title: "שגיאה",
-          description: "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
+          title: isEnglishQuiz ? "Error" : "שגיאה",
+          description: isEnglishQuiz 
+            ? "An error occurred while calculating the score. Please try again."
+            : "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
           variant: "destructive",
         });
       }
@@ -92,6 +99,39 @@ export default function QuizPage() {
   };
 
   const renderQuestionContent = () => {
+    if (showFinalScore) {
+      return (
+        <Card className="border-2 min-h-[300px] flex flex-col">
+          <CardHeader className="flex-1">
+            <CardTitle className="text-2xl font-medium leading-normal text-center">
+              {isEnglishQuiz ? "Quiz Complete!" : "המבחן הסתיים!"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 text-center">
+            <div className="text-4xl font-bold text-[#4263EB] mb-4">{score}%</div>
+            <p className="text-lg mb-4">
+              {isEnglishQuiz 
+                ? `You got ${correctAnswers} out of ${quiz.questions.length} questions correct`
+                : `ענית נכון על ${correctAnswers} מתוך ${quiz.questions.length} שאלות`}
+            </p>
+            <Button 
+              onClick={() => {
+                const searchParams = new URLSearchParams({
+                  subject: quiz.subject,
+                  gradeLevel: quiz.gradeLevel,
+                  materials: quiz.materials
+                }).toString();
+                window.location.href = `/?${searchParams}`;
+              }}
+              className="bg-[#4263EB] hover:bg-[#4263EB]/90"
+            >
+              {isEnglishQuiz ? "Start New Quiz" : "התחל מבחן חדש"}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
     if (displayMode === "flashcard") {
       return (
         <Card className="border-2 min-h-[300px] flex flex-col">
@@ -106,11 +146,18 @@ export default function QuizPage() {
               variant="outline"
               onClick={() => setShowFeedback(!showFeedback)}
             >
-              {showFeedback ? "הסתר תשובה" : "הצג תשובה"}
+              {showFeedback 
+                ? (isEnglishQuiz ? "Hide Answer" : "הסתר תשובה")
+                : (isEnglishQuiz ? "Show Answer" : "הצג תשובה")}
             </Button>
             {showFeedback && (
               <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
-                <p className="font-medium">התשובה הנכונה: {question.options[question.correctAnswer]}</p>
+                <p className="font-medium">
+                  {isEnglishQuiz 
+                    ? "Correct Answer: "
+                    : "התשובה הנכונה: "}
+                  {question.options[question.correctAnswer]}
+                </p>
                 {question.explanation && (
                   <p className="mt-2 text-sm">{question.explanation}</p>
                 )}
@@ -169,8 +216,8 @@ export default function QuizPage() {
             }`}>
               <p className="font-medium">
                 {answers[currentQuestion] === question.correctAnswer
-                  ? "תשובה נכונה!"
-                  : "תשובה לא נכונה"}
+                  ? (isEnglishQuiz ? "Correct!" : "תשובה נכונה!")
+                  : (isEnglishQuiz ? "Incorrect" : "תשובה לא נכונה")}
               </p>
               {question.explanation && (
                 <p className="mt-2 text-sm">
@@ -212,56 +259,62 @@ export default function QuizPage() {
               </span>
             </div>
             <span className="text-gray-500">
-              שאלה {currentQuestion + 1} מתוך {quiz.questions.length}
+              {isEnglishQuiz 
+                ? `Question ${currentQuestion + 1} of ${quiz.questions.length}`
+                : `שאלה ${currentQuestion + 1} מתוך ${quiz.questions.length}`}
             </span>
           </div>
         </div>
 
         {renderQuestionContent()}
 
-        <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setShowFeedback(false);
-              setCurrentQuestion(prev => prev - 1);
-            }}
-            disabled={currentQuestion === 0}
-            className="gap-2"
-          >
-            <ChevronRight className="w-4 h-4" />
-            הקודם
-          </Button>
+        {!showFinalScore && (
+          <div className="flex justify-between items-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFeedback(false);
+                setCurrentQuestion(prev => prev - 1);
+              }}
+              disabled={currentQuestion === 0}
+              className="gap-2"
+            >
+              <ChevronRight className="w-4 h-4" />
+              {isEnglishQuiz ? "Previous" : "הקודם"}
+            </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => {
-              const searchParams = new URLSearchParams({
-                subject: quiz.subject,
-                gradeLevel: quiz.gradeLevel,
-                materials: quiz.materials
-              }).toString();
-              window.location.href = `/?${searchParams}`;
-            }}
-          >
-            התחל מחדש
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const searchParams = new URLSearchParams({
+                  subject: quiz.subject,
+                  gradeLevel: quiz.gradeLevel,
+                  materials: quiz.materials
+                }).toString();
+                window.location.href = `/?${searchParams}`;
+              }}
+            >
+              {isEnglishQuiz ? "Restart" : "התחל מחדש"}
+            </Button>
 
-          <Button
-            onClick={handleNext}
-            disabled={displayMode === "standard" && (answers[currentQuestion] === undefined || mutation.isPending)}
-            className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
-          >
-            {currentQuestion === quiz.questions.length - 1 ? (
-              mutation.isPending ? "שולח..." : "סיים מבחן"
-            ) : (
-              <>
-                הבא
-                <ChevronLeft className="w-4 h-4" />
-              </>
-            )}
-          </Button>
-        </div>
+            <Button
+              onClick={handleNext}
+              disabled={displayMode === "standard" && (answers[currentQuestion] === undefined || mutation.isPending)}
+              className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
+            >
+              {currentQuestion === quiz.questions.length - 1 ? (
+                mutation.isPending 
+                  ? (isEnglishQuiz ? "Submitting..." : "שולח...")
+                  : (isEnglishQuiz ? "Finish Quiz" : "סיים מבחן")
+              ) : (
+                <>
+                  {isEnglishQuiz ? "Next" : "הבא"}
+                  <ChevronLeft className="w-4 h-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
