@@ -8,17 +8,16 @@ export const quizzes = pgTable("quizzes", {
   gradeLevel: text("grade_level").notNull(),
   materials: text("materials").notNull(),
   questions: jsonb("questions").$type<{
-    type: "multiple-choice" | "true-false" | "fill-in-blank";
     question: string;
-    options?: string[];
-    correctAnswer: number | string;
+    options: string[];
+    correctAnswer: number;
     explanation: string;
   }[]>().notNull(),
   score: integer("score"),
   completed: boolean("completed").default(false),
-  timeSpent: integer("time_spent"),
+  timeSpent: integer("time_spent"), // Time spent in seconds
   createdAt: timestamp("created_at").defaultNow(),
-  studyMode: boolean("study_mode").default(false)
+  studyMode: boolean("study_mode").default(false) // New field to differentiate study mode from quiz mode
 });
 
 export const insertQuizSchema = createInsertSchema(quizzes).pick({
