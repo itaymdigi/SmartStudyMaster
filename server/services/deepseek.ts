@@ -27,50 +27,47 @@ export async function generateQuizQuestions(
   gradeLevel: string,
   materials: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate 12 questions in Hebrew about ${subject} for ${gradeLevel} students, using different question types.
-Study materials: ${materials}
+  const prompt = `Using your expertise as a quiz generator, create 10 diverse Hebrew questions about ${subject} suitable for ${gradeLevel} level students.
 
-Create a mix of:
-1. Multiple-choice questions (6 questions)
-   - 4 answer options each
-   - One correct answer and three plausible but incorrect options
-2. True/False questions (3 questions)
-   - Clear statements that test understanding
-3. Fill-in-the-blank questions (3 questions)
-   - Single word or short phrase answers
-   - Clear context that leads to one correct answer
+Use these materials as context: ${materials}
 
-All questions should:
-1. Test deep understanding of the materials
-2. Use Hebrew for all text
-3. Be at an appropriate difficulty level for ${gradeLevel}
-4. Include brief explanations for correct answers
+Generate a mix of question types:
+- 5 multiple-choice questions (4 options each)
+- 3 true/false questions
+- 2 fill-in-the-blank questions
 
-Format response as a strict JSON object:
+Each question should:
+- Test understanding of key concepts
+- Use clear, grade-appropriate Hebrew language
+- Include a brief but helpful explanation for the correct answer
+
+Format requirements:
 {
   "questions": [
     {
       "type": "multiple-choice",
-      "question": "Question text here",
-      "options": ["First", "Second", "Third", "Fourth"],
-      "correctAnswer": 0,
-      "explanation": "Why this is correct"
+      "question": "[question text]",
+      "options": ["[option 1]", "[option 2]", "[option 3]", "[option 4]"],
+      "correctAnswer": [0-3],
+      "explanation": "[explanation]"
     },
     {
       "type": "true-false",
-      "question": "Statement to evaluate",
+      "question": "[statement]",
       "options": ["נכון", "לא נכון"],
-      "correctAnswer": 0,
-      "explanation": "Why true/false"
+      "correctAnswer": [0-1],
+      "explanation": "[explanation]"
     },
     {
       "type": "fill-in-blank",
-      "question": "Complete this sentence: ___",
-      "correctAnswer": "correct word/phrase",
-      "explanation": "Why this is the answer"
+      "question": "[text with ___]",
+      "correctAnswer": "[answer]",
+      "explanation": "[explanation]"
     }
   ]
-}`;
+}
+
+Note: All content should be in Hebrew except for the JSON structure.`;
 
   try {
     const response = await deepseek.chat.completions.create({
@@ -78,14 +75,14 @@ Format response as a strict JSON object:
       messages: [
         {
           role: "system",
-          content: "You are an expert Hebrew teacher who creates engaging, thought-provoking questions that promote deep learning."
+          content: "You are a specialized educational quiz generator that creates high-quality Hebrew questions."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.8,
+      temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
@@ -103,6 +100,7 @@ Format response as a strict JSON object:
       // Validate the questions
       const validQuestions: QuizQuestion[] = parsedContent.questions.filter((q: any) => {
         if (!q.type || !q.question || !q.correctAnswer || !q.explanation) {
+          console.log("Invalid question format:", q);
           return false;
         }
 
@@ -118,6 +116,7 @@ Format response as a strict JSON object:
           case "fill-in-blank":
             return typeof q.correctAnswer === 'string' && q.correctAnswer.length > 0;
           default:
+            console.log("Invalid question type:", q.type);
             return false;
         }
       });
@@ -126,8 +125,8 @@ Format response as a strict JSON object:
         throw new Error("Not enough valid questions generated");
       }
 
-      // Shuffle and select 10 questions
-      return shuffleArray(validQuestions).slice(0, 10);
+      return validQuestions;
+
     } catch (parseError) {
       console.error("Error parsing response:", parseError);
       throw new Error("Failed to parse quiz questions");
@@ -141,15 +140,15 @@ Format response as a strict JSON object:
     for (let i = 0; i < 5; i++) {
       defaultQuestions.push({
         type: "multiple-choice",
-        question: `שאלה ${i + 1} בנושא ${subject}: ${materials.split(' ').slice(0, 3).join(' ')}...`,
+        question: `שאלה ${i + 1} בנושא ${subject}`,
         options: [
-          `תשובה א' לשאלה ${i + 1}`,
-          `תשובה ב' לשאלה ${i + 1}`,
-          `תשובה ג' לשאלה ${i + 1}`,
-          `תשובה ד' לשאלה ${i + 1}`
+          `תשובה א'`,
+          `תשובה ב'`,
+          `תשובה ג'`,
+          `תשובה ד'`
         ],
         correctAnswer: Math.floor(Math.random() * 4),
-        explanation: `הסבר לתשובה הנכונה לשאלה ${i + 1}`
+        explanation: `הסבר לתשובה הנכונה`
       });
     }
 
@@ -157,10 +156,10 @@ Format response as a strict JSON object:
     for (let i = 0; i < 3; i++) {
       defaultQuestions.push({
         type: "true-false",
-        question: `משפט ${i + 1} לבדיקה בנושא ${subject}`,
+        question: `משפט ${i + 1} לבדיקה: ${subject}`,
         options: ["נכון", "לא נכון"],
         correctAnswer: Math.floor(Math.random() * 2),
-        explanation: `הסבר למשפט ${i + 1}`
+        explanation: `הסבר למשפט`
       });
     }
 
@@ -168,9 +167,9 @@ Format response as a strict JSON object:
     for (let i = 0; i < 2; i++) {
       defaultQuestions.push({
         type: "fill-in-blank",
-        question: `השלם את המשפט ${i + 1}: ___ בנושא ${subject}`,
-        correctAnswer: `תשובה ${i + 1}`,
-        explanation: `הסבר להשלמת המשפט ${i + 1}`
+        question: `השלם את המשפט: ___ ${subject}`,
+        correctAnswer: `תשובה`,
+        explanation: `הסבר להשלמת המשפט`
       });
     }
 
