@@ -17,6 +17,7 @@ export default function QuizPage() {
   const [, setLocation] = useLocation();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
+  const [currentSelection, setCurrentSelection] = useState<string | undefined>();
   const [showFeedback, setShowFeedback] = useState(false);
   const [displayMode, setDisplayMode] = useState<"standard" | "flashcard">("standard");
   const [showFinalScore, setShowFinalScore] = useState(false);
@@ -36,7 +37,6 @@ export default function QuizPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
-      // Calculate incorrect questions for review mode
       const wrongAnswers = answers.reduce((acc, answer, index) => {
         if (answer !== quiz!.questions[index].correctAnswer) {
           acc.push(index);
@@ -85,6 +85,7 @@ export default function QuizPage() {
   const score = Math.round((correctAnswers / quiz.questions.length) * 100);
 
   const handleAnswer = (value: string) => {
+    setCurrentSelection(value);
     const newAnswers = [...answers];
     if (reviewMode) {
       newAnswers[incorrectQuestions[currentQuestion]] = parseInt(value);
@@ -99,11 +100,13 @@ export default function QuizPage() {
     setReviewMode(true);
     setCurrentQuestion(0);
     setShowFeedback(false);
+    setCurrentSelection(undefined); //added
     setShowFinalScore(false);
   };
 
   const handleNext = () => {
     setShowFeedback(false);
+    setCurrentSelection(undefined); // Reset selection for next question
     if (reviewMode) {
       if (currentQuestion < incorrectQuestions.length - 1) {
         setCurrentQuestion(prev => prev + 1);
@@ -129,6 +132,12 @@ export default function QuizPage() {
         }
       }
     }
+  };
+
+  const handlePrevious = () => {
+    setShowFeedback(false);
+    setCurrentSelection(undefined);
+    setCurrentQuestion(prev => prev - 1);
   };
 
   const renderQuestionContent = () => {
@@ -221,38 +230,6 @@ export default function QuizPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          <RadioGroup
-            value={answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion]?.toString()}
-            onValueChange={handleAnswer}
-            className="space-y-4"
-          >
-            {question.options.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2 space-x-reverse">
-                <div className="flex items-center w-full">
-                  <RadioGroupItem
-                    value={index.toString()}
-                    id={`option-${index}`}
-                    className="ml-2"
-                  />
-                  <Label
-                    htmlFor={`option-${index}`}
-                    className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
-                      showFeedback
-                        ? index === question.correctAnswer
-                          ? "bg-green-50 text-green-700 font-medium"
-                          : answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === index
-                          ? "bg-red-50 text-red-700"
-                          : "hover:bg-gray-50"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    {option}
-                  </Label>
-                </div>
-              </div>
-            ))}
-          </RadioGroup>
-
           {showFeedback && (
             <div className={`mt-4 p-4 rounded-md ${
               answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === question.correctAnswer
@@ -324,10 +301,7 @@ export default function QuizPage() {
           <div className="flex justify-between items-center">
             <Button
               variant="outline"
-              onClick={() => {
-                setShowFeedback(false);
-                setCurrentQuestion(prev => prev - 1);
-              }}
+              onClick={handlePrevious}
               disabled={currentQuestion === 0}
               className="gap-2"
             >
@@ -335,23 +309,41 @@ export default function QuizPage() {
               {isEnglishQuiz ? "Previous" : "הקודם"}
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => {
-                const searchParams = new URLSearchParams({
-                  subject: quiz.subject,
-                  gradeLevel: quiz.gradeLevel,
-                  materials: quiz.materials
-                }).toString();
-                window.location.href = `/?${searchParams}`;
-              }}
+            <RadioGroup
+              value={currentSelection}
+              onValueChange={handleAnswer}
+              className="space-y-4"
             >
-              {isEnglishQuiz ? "Restart" : "התחל מחדש"}
-            </Button>
+              {question.options.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2 space-x-reverse">
+                  <div className="flex items-center w-full">
+                    <RadioGroupItem
+                      value={index.toString()}
+                      id={`option-${index}`}
+                      className="ml-2"
+                    />
+                    <Label
+                      htmlFor={`option-${index}`}
+                      className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
+                        showFeedback
+                          ? index === question.correctAnswer
+                            ? "bg-green-50 text-green-700 font-medium"
+                            : answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === index
+                            ? "bg-red-50 text-red-700"
+                            : "hover:bg-gray-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      {option}
+                    </Label>
+                  </div>
+                </div>
+              ))}
+            </RadioGroup>
 
             <Button
               onClick={handleNext}
-              disabled={displayMode === "standard" && (answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === undefined || mutation.isPending)}
+              disabled={displayMode === "standard" && (currentSelection === undefined || mutation.isPending)}
               className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
             >
               {currentQuestion === (reviewMode ? incorrectQuestions.length - 1 : quiz.questions.length - 1) ? (
