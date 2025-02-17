@@ -27,6 +27,25 @@ export default function QuizPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: quiz, isLoading } = useQuery<Quiz>({
+    queryKey: [`/api/quizzes/${id}`],
+  });
+
+  if (isLoading || !quiz) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#4263EB]" />
+      </div>
+    );
+  }
+
+  const correctAnswers = answers.reduce((acc, answer, index) => {
+    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
+  }, 0);
+
+  const isEnglishQuiz = quiz.subject === "אנגלית";
+  const score = Math.round((correctAnswers / quiz.questions.length) * 100);
+
   // Add useEffect for confetti animation
   useEffect(() => {
     if (showFinalScore && score >= 85) {
@@ -57,10 +76,6 @@ export default function QuizPage() {
     }
   }, [showFinalScore, score]);
 
-  const { data: quiz, isLoading } = useQuery<Quiz>({
-    queryKey: [`/api/quizzes/${id}`],
-  });
-
   const mutation = useMutation({
     mutationFn: async (score: number) => {
       const res = await apiRequest("POST", `/api/quizzes/${id}/score`, { score });
@@ -69,7 +84,7 @@ export default function QuizPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
       const wrongAnswers = answers.reduce((acc, answer, index) => {
-        if (answer !== quiz!.questions[index].correctAnswer) {
+        if (answer !== quiz.questions[index].correctAnswer) {
           acc.push(index);
         }
         return acc;
@@ -79,8 +94,8 @@ export default function QuizPage() {
     },
     onError: (error) => {
       toast({
-        title: quiz?.subject === "אנגלית" ? "Error" : "שגיאה",
-        description: quiz?.subject === "אנגלית"
+        title: isEnglishQuiz ? "Error" : "שגיאה",
+        description: isEnglishQuiz
           ? "An error occurred while submitting the quiz. Please try again."
           : "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
         variant: "destructive",
@@ -89,31 +104,11 @@ export default function QuizPage() {
     }
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#4263EB]" />
-      </div>
-    );
-  }
-
-  if (!quiz) {
-    console.error("No quiz data found for id:", id);
-    return null;
-  }
-
   const question = reviewMode
     ? quiz.questions[incorrectQuestions[currentQuestion]]
     : quiz.questions[currentQuestion];
 
   const progress = ((currentQuestion + 1) / (reviewMode ? incorrectQuestions.length : quiz.questions.length)) * 100;
-
-  const correctAnswers = answers.reduce((acc, answer, index) => {
-    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
-  }, 0);
-
-  const isEnglishQuiz = quiz.subject === "אנגלית";
-  const score = Math.round((correctAnswers / quiz.questions.length) * 100);
 
   const handleAnswer = (value: string) => {
     setCurrentSelection(value);
@@ -284,7 +279,7 @@ export default function QuizPage() {
                             ? "bg-red-50 text-red-700"
                             : "hover:bg-gray-50"
                         : "hover:bg-gray-50"
-                      }`}
+                    }`}
                   >
                     {option}
                   </Label>
