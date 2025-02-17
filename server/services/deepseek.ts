@@ -97,31 +97,51 @@ Note: All content should be in Hebrew except for the JSON structure.`;
         throw new Error("Invalid response format: questions array not found");
       }
 
-      // Validate the questions
-      const validQuestions: QuizQuestion[] = parsedContent.questions.filter((q: any) => {
-        if (!q.type || !q.question || !q.correctAnswer || !q.explanation) {
-          console.log("Invalid question format:", q);
-          return false;
-        }
-
-        switch (q.type) {
-          case "multiple-choice":
-            return Array.isArray(q.options) && q.options.length === 4 && 
-                   typeof q.correctAnswer === 'number' && 
-                   q.correctAnswer >= 0 && q.correctAnswer <= 3;
-          case "true-false":
-            return Array.isArray(q.options) && q.options.length === 2 && 
-                   typeof q.correctAnswer === 'number' && 
-                   q.correctAnswer >= 0 && q.correctAnswer <= 1;
-          case "fill-in-blank":
-            return typeof q.correctAnswer === 'string' && q.correctAnswer.length > 0;
-          default:
-            console.log("Invalid question type:", q.type);
+      // Validate the questions with less strict validation
+      const validQuestions: QuizQuestion[] = parsedContent.questions
+        .filter((q: any): q is QuizQuestion => {
+          // Basic required fields check
+          if (!q.type || !q.question || !q.explanation) {
+            console.log("Missing required fields:", q);
             return false;
-        }
-      });
+          }
 
-      if (validQuestions.length < 10) {
+          // Type-specific validation
+          switch (q.type) {
+            case "multiple-choice":
+              if (!Array.isArray(q.options) || q.options.length !== 4) {
+                console.log("Invalid multiple choice options:", q.options);
+                return false;
+              }
+              if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 3) {
+                console.log("Invalid multiple choice answer:", q.correctAnswer);
+                return false;
+              }
+              return true;
+
+            case "true-false":
+              q.options = ["נכון", "לא נכון"]; // Ensure consistent options
+              if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 1) {
+                console.log("Invalid true/false answer:", q.correctAnswer);
+                return false;
+              }
+              return true;
+
+            case "fill-in-blank":
+              if (typeof q.correctAnswer !== 'string' || !q.correctAnswer.trim()) {
+                console.log("Invalid fill-in-blank answer:", q.correctAnswer);
+                return false;
+              }
+              return true;
+
+            default:
+              console.log("Unknown question type:", q.type);
+              return false;
+          }
+        });
+
+      if (validQuestions.length < 5) {
+        console.log("Not enough valid questions, falling back to defaults");
         throw new Error("Not enough valid questions generated");
       }
 
