@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle, Layout, LibrarySquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle, Layout, LibrarySquare, RotateCcw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export default function QuizPage() {
@@ -20,6 +20,8 @@ export default function QuizPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [displayMode, setDisplayMode] = useState<"standard" | "flashcard">("standard");
   const [showFinalScore, setShowFinalScore] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [incorrectQuestions, setIncorrectQuestions] = useState<number[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -34,6 +36,14 @@ export default function QuizPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
+      // Calculate incorrect questions for review mode
+      const wrongAnswers = answers.reduce((acc, answer, index) => {
+        if (answer !== quiz!.questions[index].correctAnswer) {
+          acc.push(index);
+        }
+        return acc;
+      }, [] as number[]);
+      setIncorrectQuestions(wrongAnswers);
       setShowFinalScore(true);
     },
     onError: (error) => {
@@ -61,8 +71,11 @@ export default function QuizPage() {
     return null;
   }
 
-  const question = quiz.questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
+  const question = reviewMode 
+    ? quiz.questions[incorrectQuestions[currentQuestion]]
+    : quiz.questions[currentQuestion];
+
+  const progress = ((currentQuestion + 1) / (reviewMode ? incorrectQuestions.length : quiz.questions.length)) * 100;
 
   const correctAnswers = answers.reduce((acc, answer, index) => {
     return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
@@ -73,27 +86,47 @@ export default function QuizPage() {
 
   const handleAnswer = (value: string) => {
     const newAnswers = [...answers];
-    newAnswers[currentQuestion] = parseInt(value);
+    if (reviewMode) {
+      newAnswers[incorrectQuestions[currentQuestion]] = parseInt(value);
+    } else {
+      newAnswers[currentQuestion] = parseInt(value);
+    }
     setAnswers(newAnswers);
     setShowFeedback(true);
   };
 
+  const startReviewMode = () => {
+    setReviewMode(true);
+    setCurrentQuestion(0);
+    setShowFeedback(false);
+    setShowFinalScore(false);
+  };
+
   const handleNext = () => {
     setShowFeedback(false);
-    if (currentQuestion < quiz.questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
+    if (reviewMode) {
+      if (currentQuestion < incorrectQuestions.length - 1) {
+        setCurrentQuestion(prev => prev + 1);
+      } else {
+        setShowFinalScore(true);
+        setReviewMode(false);
+      }
     } else {
-      try {
-        mutation.mutate(score);
-      } catch (error) {
-        console.error("Error calculating score:", error);
-        toast({
-          title: isEnglishQuiz ? "Error" : "שגיאה",
-          description: isEnglishQuiz 
-            ? "An error occurred while calculating the score. Please try again."
-            : "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
-          variant: "destructive",
-        });
+      if (currentQuestion < quiz.questions.length - 1) {
+        setCurrentQuestion(prev => prev + 1);
+      } else {
+        try {
+          mutation.mutate(score);
+        } catch (error) {
+          console.error("Error calculating score:", error);
+          toast({
+            title: isEnglishQuiz ? "Error" : "שגיאה",
+            description: isEnglishQuiz 
+              ? "An error occurred while calculating the score. Please try again."
+              : "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
+            variant: "destructive",
+          });
+        }
       }
     }
   };
@@ -114,6 +147,18 @@ export default function QuizPage() {
                 ? `You got ${correctAnswers} out of ${quiz.questions.length} questions correct`
                 : `ענית נכון על ${correctAnswers} מתוך ${quiz.questions.length} שאלות`}
             </p>
+            {incorrectQuestions.length > 0 && (
+              <Button 
+                onClick={startReviewMode}
+                variant="outline"
+                className="mb-4 w-full"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {isEnglishQuiz 
+                  ? `Review ${incorrectQuestions.length} Incorrect Questions`
+                  : `חזור על ${incorrectQuestions.length} שאלות שגויות`}
+              </Button>
+            )}
             <Button 
               onClick={() => {
                 const searchParams = new URLSearchParams({
@@ -123,7 +168,7 @@ export default function QuizPage() {
                 }).toString();
                 window.location.href = `/?${searchParams}`;
               }}
-              className="bg-[#4263EB] hover:bg-[#4263EB]/90"
+              className="bg-[#4263EB] hover:bg-[#4263EB]/90 w-full"
             >
               {isEnglishQuiz ? "Start New Quiz" : "התחל מבחן חדש"}
             </Button>
@@ -177,7 +222,7 @@ export default function QuizPage() {
         </CardHeader>
         <CardContent className="pt-4">
           <RadioGroup
-            value={answers[currentQuestion]?.toString()}
+            value={answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion]?.toString()}
             onValueChange={handleAnswer}
             className="space-y-4"
           >
@@ -195,7 +240,7 @@ export default function QuizPage() {
                       showFeedback
                         ? index === question.correctAnswer
                           ? "bg-green-50 text-green-700 font-medium"
-                          : answers[currentQuestion] === index
+                          : answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === index
                           ? "bg-red-50 text-red-700"
                           : "hover:bg-gray-50"
                         : "hover:bg-gray-50"
@@ -210,12 +255,12 @@ export default function QuizPage() {
 
           {showFeedback && (
             <div className={`mt-4 p-4 rounded-md ${
-              answers[currentQuestion] === question.correctAnswer
+              answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === question.correctAnswer
                 ? "bg-green-50 border border-green-200 text-green-800"
                 : "bg-red-50 border border-red-200 text-red-800"
             }`}>
               <p className="font-medium">
-                {answers[currentQuestion] === question.correctAnswer
+                {answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === question.correctAnswer
                   ? (isEnglishQuiz ? "Correct!" : "תשובה נכונה!")
                   : (isEnglishQuiz ? "Incorrect" : "תשובה לא נכונה")}
               </p>
@@ -244,7 +289,14 @@ export default function QuizPage() {
                 <LibrarySquare className="h-4 w-4" />
               </ToggleGroupItem>
             </ToggleGroup>
-            <span className="text-gray-500">{quiz.subject} - {quiz.gradeLevel}</span>
+            <span className="text-gray-500">
+              {reviewMode && (
+                <span className="text-blue-600 mr-2">
+                  {isEnglishQuiz ? "Review Mode" : "מצב חזרה"}
+                </span>
+              )}
+              {quiz.subject} - {quiz.gradeLevel}
+            </span>
           </div>
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between items-center text-sm">
@@ -255,13 +307,13 @@ export default function QuizPage() {
               </span>
               <span className="text-red-600 flex items-center gap-1">
                 <XCircle className="w-4 h-4" />
-                {currentQuestion + 1 - correctAnswers}
+                {reviewMode ? incorrectQuestions.length : currentQuestion + 1 - correctAnswers}
               </span>
             </div>
             <span className="text-gray-500">
               {isEnglishQuiz 
-                ? `Question ${currentQuestion + 1} of ${quiz.questions.length}`
-                : `שאלה ${currentQuestion + 1} מתוך ${quiz.questions.length}`}
+                ? `Question ${currentQuestion + 1} of ${reviewMode ? incorrectQuestions.length : quiz.questions.length}`
+                : `שאלה ${currentQuestion + 1} מתוך ${reviewMode ? incorrectQuestions.length : quiz.questions.length}`}
             </span>
           </div>
         </div>
@@ -299,10 +351,10 @@ export default function QuizPage() {
 
             <Button
               onClick={handleNext}
-              disabled={displayMode === "standard" && (answers[currentQuestion] === undefined || mutation.isPending)}
+              disabled={displayMode === "standard" && (answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === undefined || mutation.isPending)}
               className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
             >
-              {currentQuestion === quiz.questions.length - 1 ? (
+              {currentQuestion === (reviewMode ? incorrectQuestions.length - 1 : quiz.questions.length - 1) ? (
                 mutation.isPending 
                   ? (isEnglishQuiz ? "Submitting..." : "שולח...")
                   : (isEnglishQuiz ? "Finish Quiz" : "סיים מבחן")
