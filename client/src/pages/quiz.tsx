@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import confetti from 'canvas-confetti';
 
 export default function QuizPage() {
+  // All hooks at the top
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -31,25 +32,34 @@ export default function QuizPage() {
     queryKey: [`/api/quizzes/${id}`],
   });
 
-  // Handle loading state
-  if (isLoading || !quiz) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#4263EB]" />
-      </div>
-    );
-  }
+  const mutation = useMutation({
+    mutationFn: async (score: number) => {
+      const res = await apiRequest("POST", `/api/quizzes/${id}/score`, { score });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
+      const wrongAnswers = answers.reduce((acc, answer, index) => {
+        if (answer !== quiz?.questions[index].correctAnswer) {
+          acc.push(index);
+        }
+        return acc;
+      }, [] as number[]);
+      setIncorrectQuestions(wrongAnswers);
+      setShowFinalScore(true);
+    },
+    onError: (error) => {
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
+        variant: "destructive",
+      });
+      console.error("Error submitting quiz:", error);
+    }
+  });
 
-  const isEnglishQuiz = quiz.subject === "אנגלית";
-
-  const correctAnswers = answers.reduce((acc, answer, index) => {
-    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
-  }, 0);
-
-  const score = Math.round((correctAnswers / quiz.questions.length) * 100);
-
-  // Add useEffect for confetti animation
   useEffect(() => {
+    let interval: NodeJS.Timeout;
     if (showFinalScore && score >= 85) {
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
@@ -58,11 +68,12 @@ export default function QuizPage() {
         return Math.random() * (max - min) + min;
       }
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         const timeLeft = animationEnd - Date.now();
 
         if (timeLeft <= 0) {
-          return clearInterval(interval);
+          clearInterval(interval);
+          return;
         }
 
         confetti({
@@ -73,43 +84,28 @@ export default function QuizPage() {
           colors: ['#4263EB', '#34C759', '#FFD60A']
         });
       }, 50);
-
-      return () => clearInterval(interval);
     }
-  }, [showFinalScore, score]);
+    return () => clearInterval(interval);
+  }, [showFinalScore]);
 
-  const mutation = useMutation({
-    mutationFn: async (score: number) => {
-      const res = await apiRequest("POST", `/api/quizzes/${id}/score`, { score });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/quizzes/${id}`] });
-      const wrongAnswers = answers.reduce((acc, answer, index) => {
-        if (answer !== quiz.questions[index].correctAnswer) {
-          acc.push(index);
-        }
-        return acc;
-      }, [] as number[]);
-      setIncorrectQuestions(wrongAnswers);
-      setShowFinalScore(true);
-    },
-    onError: (error) => {
-      toast({
-        title: isEnglishQuiz ? "Error" : "שגיאה",
-        description: isEnglishQuiz
-          ? "An error occurred while submitting the quiz. Please try again."
-          : "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
-        variant: "destructive",
-      });
-      console.error("Error submitting quiz:", error);
-    }
-  });
+  // Handle loading state
+  if (isLoading || !quiz) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#4263EB]" />
+      </div>
+    );
+  }
 
+  // Derived state calculations
+  const isEnglishQuiz = quiz.subject === "אנגלית";
+  const correctAnswers = answers.reduce((acc, answer, index) => {
+    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
+  }, 0);
+  const score = Math.round((correctAnswers / quiz.questions.length) * 100);
   const question = reviewMode
     ? quiz.questions[incorrectQuestions[currentQuestion]]
     : quiz.questions[currentQuestion];
-
   const progress = ((currentQuestion + 1) / (reviewMode ? incorrectQuestions.length : quiz.questions.length)) * 100;
 
   const handleAnswer = (value: string) => {
