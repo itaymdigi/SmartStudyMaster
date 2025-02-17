@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
@@ -15,8 +16,9 @@ export default function QuizPage() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<(number | string)[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [textAnswer, setTextAnswer] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -59,19 +61,39 @@ export default function QuizPage() {
   const question = quiz.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
 
-  const correctAnswers = answers.reduce((acc, answer, index) => {
-    return acc + (answer === quiz.questions[index].correctAnswer ? 1 : 0);
+  const isAnswerCorrect = (questionIndex: number) => {
+    const answer = answers[questionIndex];
+    const question = quiz.questions[questionIndex];
+
+    if (question.type === "fill-in-blank") {
+      return typeof answer === "string" && 
+             answer.toLowerCase().trim() === question.correctAnswer.toString().toLowerCase().trim();
+    }
+
+    return answer === question.correctAnswer;
+  };
+
+  const correctAnswers = answers.reduce((acc, _, index) => {
+    return acc + (isAnswerCorrect(index) ? 1 : 0);
   }, 0);
 
   const handleAnswer = (value: string) => {
     const newAnswers = [...answers];
-    newAnswers[currentQuestion] = parseInt(value);
+
+    if (question.type === "fill-in-blank") {
+      newAnswers[currentQuestion] = value.trim();
+      setTextAnswer(value);
+    } else {
+      newAnswers[currentQuestion] = parseInt(value);
+    }
+
     setAnswers(newAnswers);
     setShowFeedback(true);
   };
 
   const handleNext = () => {
     setShowFeedback(false);
+    setTextAnswer("");
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
@@ -86,6 +108,62 @@ export default function QuizPage() {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const renderQuestion = () => {
+    switch (question.type) {
+      case "fill-in-blank":
+        return (
+          <div className="space-y-4">
+            <p className="text-lg">{question.question}</p>
+            <Input
+              type="text"
+              value={textAnswer}
+              onChange={(e) => handleAnswer(e.target.value)}
+              placeholder="הקלד את תשובתך כאן"
+              className="max-w-md"
+            />
+          </div>
+        );
+
+      case "true-false":
+      case "multiple-choice":
+        return (
+          <RadioGroup
+            value={answers[currentQuestion]?.toString()}
+            onValueChange={handleAnswer}
+            className="space-y-4"
+          >
+            {question.options?.map((option, index) => (
+              <div key={index} className="flex items-center space-x-2 space-x-reverse">
+                <div className="flex items-center w-full">
+                  <RadioGroupItem
+                    value={index.toString()}
+                    id={`option-${index}`}
+                    className="ml-2"
+                  />
+                  <Label
+                    htmlFor={`option-${index}`}
+                    className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
+                      showFeedback
+                        ? index === question.correctAnswer
+                          ? "bg-green-50 text-green-700 font-medium"
+                          : answers[currentQuestion] === index
+                          ? "bg-red-50 text-red-700"
+                          : "hover:bg-gray-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    {option}
+                  </Label>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+        );
+      default:
+        return <p>Unsupported question type</p>;
     }
   };
 
@@ -119,46 +197,16 @@ export default function QuizPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <RadioGroup
-              value={answers[currentQuestion]?.toString()}
-              onValueChange={handleAnswer}
-              className="space-y-4"
-            >
-              {question.options.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2 space-x-reverse">
-                  <div className="flex items-center w-full">
-                    <RadioGroupItem
-                      value={index.toString()}
-                      id={`option-${index}`}
-                      className="ml-2"
-                    />
-                    <Label
-                      htmlFor={`option-${index}`}
-                      className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
-                        showFeedback
-                          ? index === question.correctAnswer
-                            ? "bg-green-50 text-green-700 font-medium"
-                            : answers[currentQuestion] === index
-                            ? "bg-red-50 text-red-700"
-                            : "hover:bg-gray-50"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      {option}
-                    </Label>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
+            {renderQuestion()}
 
             {showFeedback && (
               <div className={`mt-4 p-4 rounded-md ${
-                answers[currentQuestion] === question.correctAnswer
+                isAnswerCorrect(currentQuestion)
                   ? "bg-green-50 border border-green-200 text-green-800"
                   : "bg-red-50 border border-red-200 text-red-800"
               }`}>
                 <p className="font-medium">
-                  {answers[currentQuestion] === question.correctAnswer
+                  {isAnswerCorrect(currentQuestion)
                     ? "תשובה נכונה!"
                     : "תשובה לא נכונה"}
                 </p>
@@ -177,6 +225,7 @@ export default function QuizPage() {
             variant="outline"
             onClick={() => {
               setShowFeedback(false);
+              setTextAnswer("");
               setCurrentQuestion(prev => prev - 1);
             }}
             disabled={currentQuestion === 0}
