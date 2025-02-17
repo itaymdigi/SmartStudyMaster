@@ -9,7 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle, Layout, LibrarySquare } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export default function QuizPage() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function QuizPage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [displayMode, setDisplayMode] = useState<"standard" | "flashcard">("standard");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -89,13 +91,116 @@ export default function QuizPage() {
     }
   };
 
+  const renderQuestionContent = () => {
+    if (displayMode === "flashcard") {
+      return (
+        <Card className="border-2 min-h-[300px] flex flex-col">
+          <CardHeader className="flex-1">
+            <CardTitle className="text-2xl font-medium leading-normal text-center">
+              {question.question}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <Button 
+              className="w-full"
+              variant="outline"
+              onClick={() => setShowFeedback(!showFeedback)}
+            >
+              {showFeedback ? "הסתר תשובה" : "הצג תשובה"}
+            </Button>
+            {showFeedback && (
+              <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                <p className="font-medium">התשובה הנכונה: {question.options[question.correctAnswer]}</p>
+                {question.explanation && (
+                  <p className="mt-2 text-sm">{question.explanation}</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="text-xl font-medium leading-normal">
+            {question.question}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <RadioGroup
+            value={answers[currentQuestion]?.toString()}
+            onValueChange={handleAnswer}
+            className="space-y-4"
+          >
+            {question.options.map((option, index) => (
+              <div key={index} className="flex items-center space-x-2 space-x-reverse">
+                <div className="flex items-center w-full">
+                  <RadioGroupItem
+                    value={index.toString()}
+                    id={`option-${index}`}
+                    className="ml-2"
+                  />
+                  <Label
+                    htmlFor={`option-${index}`}
+                    className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
+                      showFeedback
+                        ? index === question.correctAnswer
+                          ? "bg-green-50 text-green-700 font-medium"
+                          : answers[currentQuestion] === index
+                          ? "bg-red-50 text-red-700"
+                          : "hover:bg-gray-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    {option}
+                  </Label>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+
+          {showFeedback && (
+            <div className={`mt-4 p-4 rounded-md ${
+              answers[currentQuestion] === question.correctAnswer
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-800"
+            }`}>
+              <p className="font-medium">
+                {answers[currentQuestion] === question.correctAnswer
+                  ? "תשובה נכונה!"
+                  : "תשובה לא נכונה"}
+              </p>
+              {question.explanation && (
+                <p className="mt-2 text-sm">
+                  {question.explanation}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-4" dir="rtl">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-center mb-4">
+            <ToggleGroup type="single" value={displayMode} onValueChange={(value) => value && setDisplayMode(value as "standard" | "flashcard")}>
+              <ToggleGroupItem value="standard" aria-label="Standard View">
+                <Layout className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="flashcard" aria-label="Flashcard View">
+                <LibrarySquare className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <span className="text-gray-500">{quiz.subject} - {quiz.gradeLevel}</span>
+          </div>
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">{quiz.subject} - {quiz.gradeLevel}</span>
             <div className="flex items-center gap-2">
               <span className="text-green-600 flex items-center gap-1">
                 <CheckCircle2 className="w-4 h-4" />
@@ -105,72 +210,14 @@ export default function QuizPage() {
                 <XCircle className="w-4 h-4" />
                 {currentQuestion + 1 - correctAnswers}
               </span>
-              <span className="text-gray-500">
-                שאלה {currentQuestion + 1} מתוך {quiz.questions.length}
-              </span>
             </div>
+            <span className="text-gray-500">
+              שאלה {currentQuestion + 1} מתוך {quiz.questions.length}
+            </span>
           </div>
         </div>
 
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle className="text-xl font-medium leading-normal">
-              {question.question}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <RadioGroup
-              value={answers[currentQuestion]?.toString()}
-              onValueChange={handleAnswer}
-              className="space-y-4"
-            >
-              {question.options.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2 space-x-reverse">
-                  <div className="flex items-center w-full">
-                    <RadioGroupItem
-                      value={index.toString()}
-                      id={`option-${index}`}
-                      className="ml-2"
-                    />
-                    <Label
-                      htmlFor={`option-${index}`}
-                      className={`flex-1 py-2 px-3 rounded-md cursor-pointer select-none transition-colors ${
-                        showFeedback
-                          ? index === question.correctAnswer
-                            ? "bg-green-50 text-green-700 font-medium"
-                            : answers[currentQuestion] === index
-                            ? "bg-red-50 text-red-700"
-                            : "hover:bg-gray-50"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      {option}
-                    </Label>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
-
-            {showFeedback && (
-              <div className={`mt-4 p-4 rounded-md ${
-                answers[currentQuestion] === question.correctAnswer
-                  ? "bg-green-50 border border-green-200 text-green-800"
-                  : "bg-red-50 border border-red-200 text-red-800"
-              }`}>
-                <p className="font-medium">
-                  {answers[currentQuestion] === question.correctAnswer
-                    ? "תשובה נכונה!"
-                    : "תשובה לא נכונה"}
-                </p>
-                {question.explanation && (
-                  <p className="mt-2 text-sm">
-                    {question.explanation}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {renderQuestionContent()}
 
         <div className="flex justify-between items-center">
           <Button
@@ -202,7 +249,7 @@ export default function QuizPage() {
 
           <Button
             onClick={handleNext}
-            disabled={answers[currentQuestion] === undefined || mutation.isPending}
+            disabled={displayMode === "standard" && (answers[currentQuestion] === undefined || mutation.isPending)}
             className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
           >
             {currentQuestion === quiz.questions.length - 1 ? (
