@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Quiz } from "@shared/schema";
 import { ChevronLeft, ChevronRight, Loader2, CheckCircle2, XCircle, Layout, LibrarySquare, RotateCcw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import confetti from 'canvas-confetti';
 
 export default function QuizPage() {
   const { id } = useParams();
@@ -25,6 +26,36 @@ export default function QuizPage() {
   const [incorrectQuestions, setIncorrectQuestions] = useState<number[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Add useEffect for confetti animation
+  useEffect(() => {
+    if (showFinalScore && score >= 85) {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+
+      const randomInRange = (min: number, max: number) => {
+        return Math.random() * (max - min) + min;
+      }
+
+      const interval = setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        confetti({
+          particleCount: 3,
+          angle: randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          origin: { y: 0.6 },
+          colors: ['#4263EB', '#34C759', '#FFD60A']
+        });
+      }, 50);
+
+      return () => clearInterval(interval);
+    }
+  }, [showFinalScore, score]);
 
   const { data: quiz, isLoading } = useQuery<Quiz>({
     queryKey: [`/api/quizzes/${id}`],
@@ -49,7 +80,7 @@ export default function QuizPage() {
     onError: (error) => {
       toast({
         title: quiz?.subject === "אנגלית" ? "Error" : "שגיאה",
-        description: quiz?.subject === "אנגלית" 
+        description: quiz?.subject === "אנגלית"
           ? "An error occurred while submitting the quiz. Please try again."
           : "אירעה שגיאה בהגשת המבחן. אנא נסה שוב.",
         variant: "destructive",
@@ -71,7 +102,7 @@ export default function QuizPage() {
     return null;
   }
 
-  const question = reviewMode 
+  const question = reviewMode
     ? quiz.questions[incorrectQuestions[currentQuestion]]
     : quiz.questions[currentQuestion];
 
@@ -124,7 +155,7 @@ export default function QuizPage() {
           console.error("Error calculating score:", error);
           toast({
             title: isEnglishQuiz ? "Error" : "שגיאה",
-            description: isEnglishQuiz 
+            description: isEnglishQuiz
               ? "An error occurred while calculating the score. Please try again."
               : "אירעה שגיאה בחישוב הציון. אנא נסה שוב.",
             variant: "destructive",
@@ -152,23 +183,23 @@ export default function QuizPage() {
           <CardContent className="pt-4 text-center">
             <div className="text-4xl font-bold text-[#4263EB] mb-4">{score}%</div>
             <p className="text-lg mb-4">
-              {isEnglishQuiz 
+              {isEnglishQuiz
                 ? `You got ${correctAnswers} out of ${quiz.questions.length} questions correct`
                 : `ענית נכון על ${correctAnswers} מתוך ${quiz.questions.length} שאלות`}
             </p>
             {incorrectQuestions.length > 0 && (
-              <Button 
+              <Button
                 onClick={startReviewMode}
                 variant="outline"
                 className="mb-4 w-full"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                {isEnglishQuiz 
+                {isEnglishQuiz
                   ? `Review ${incorrectQuestions.length} Incorrect Questions`
                   : `חזור על ${incorrectQuestions.length} שאלות שגויות`}
               </Button>
             )}
-            <Button 
+            <Button
               onClick={() => {
                 const searchParams = new URLSearchParams({
                   subject: quiz.subject,
@@ -195,19 +226,19 @@ export default function QuizPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <Button 
+            <Button
               className="w-full"
               variant="outline"
               onClick={() => setShowFeedback(!showFeedback)}
             >
-              {showFeedback 
+              {showFeedback
                 ? (isEnglishQuiz ? "Hide Answer" : "הסתר תשובה")
                 : (isEnglishQuiz ? "Show Answer" : "הצג תשובה")}
             </Button>
             {showFeedback && (
               <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
                 <p className="font-medium">
-                  {isEnglishQuiz 
+                  {isEnglishQuiz
                     ? "Correct Answer: "
                     : "התשובה הנכונה: "}
                   {question.options[question.correctAnswer]}
@@ -250,10 +281,10 @@ export default function QuizPage() {
                         ? index === question.correctAnswer
                           ? "bg-green-50 text-green-700 font-medium"
                           : answers[reviewMode ? incorrectQuestions[currentQuestion] : currentQuestion] === index
-                          ? "bg-red-50 text-red-700"
-                          : "hover:bg-gray-50"
+                            ? "bg-red-50 text-red-700"
+                            : "hover:bg-gray-50"
                         : "hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     {option}
                   </Label>
@@ -320,7 +351,7 @@ export default function QuizPage() {
               </span>
             </div>
             <span className="text-gray-500">
-              {isEnglishQuiz 
+              {isEnglishQuiz
                 ? `Question ${currentQuestion + 1} of ${reviewMode ? incorrectQuestions.length : quiz.questions.length}`
                 : `שאלה ${currentQuestion + 1} מתוך ${reviewMode ? incorrectQuestions.length : quiz.questions.length}`}
             </span>
@@ -347,7 +378,7 @@ export default function QuizPage() {
               className="bg-[#4263EB] hover:bg-[#4263EB]/90 gap-2"
             >
               {currentQuestion === (reviewMode ? incorrectQuestions.length - 1 : quiz.questions.length - 1) ? (
-                mutation.isPending 
+                mutation.isPending
                   ? (isEnglishQuiz ? "Submitting..." : "שולח...")
                   : (isEnglishQuiz ? "Finish Quiz" : "סיים מבחן")
               ) : (
