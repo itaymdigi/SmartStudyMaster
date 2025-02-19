@@ -1,11 +1,10 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { studyFormSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { generateQuizQuestions } from "./services/deepseek";
 
-export function registerRoutes(app: Express): Server {
+export function registerRoutes(app: Express) {
   // Create new quiz
   app.post("/api/quizzes", async (req, res) => {
     try {
@@ -64,7 +63,4 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Failed to update score" });
     }
   });
-
-  const httpServer = createServer(app);
-  return httpServer;
 }

@@ -1,59 +1,61 @@
-import { Quiz, InsertQuiz } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
-import { quizzes } from "@shared/schema";
+import { supabase } from './db';
+import type { Quiz } from './db';
 
-export interface IStorage {
-  createQuiz(quiz: InsertQuiz): Promise<Quiz>;
-  getQuiz(id: number): Promise<Quiz | undefined>;
-  updateQuizScore(id: number, score: number, timeSpent?: number): Promise<Quiz>;
-  getQuizHistory(subject: string): Promise<Quiz[]>;
-}
-
-export class DatabaseStorage implements IStorage {
-  async createQuiz(insertQuiz: InsertQuiz): Promise<Quiz> {
-    const [quiz] = await db.insert(quizzes).values({
-      subject: insertQuiz.subject,
-      gradeLevel: insertQuiz.gradeLevel,
-      materials: insertQuiz.materials,
-      questions: insertQuiz.questions,
-      score: null,
-      completed: false,
-      studyMode: insertQuiz.studyMode || false
-    }).returning();
-    return quiz;
-  }
-
-  async getQuiz(id: number): Promise<Quiz | undefined> {
-    const [quiz] = await db
-      .select()
-      .from(quizzes)
-      .where(eq(quizzes.id, id));
-    return quiz;
-  }
-
-  async updateQuizScore(id: number, score: number, timeSpent?: number): Promise<Quiz> {
-    const [quiz] = await db
-      .update(quizzes)
-      .set({ 
-        score, 
-        completed: true,
-        timeSpent: timeSpent || null 
+class Storage {
+  async createQuiz(data: Omit<Quiz, 'id' | 'created_at'>): Promise<Quiz> {
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
+      .insert({
+        subject: data.subject,
+        grade_level: data.gradeLevel,
+        materials: data.materials,
+        questions: data.questions,
       })
-      .where(eq(quizzes.id, id))
-      .returning();
+      .select()
+      .single();
 
-    if (!quiz) throw new Error("Quiz not found");
-    return quiz;
+    if (error) throw error;
+    return this.mapQuizFromDB(quiz);
   }
 
-  async getQuizHistory(subject: string): Promise<Quiz[]> {
-    return db
+  async getQuiz(id: number): Promise<Quiz | null> {
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
       .select()
-      .from(quizzes)
-      .where(eq(quizzes.subject, subject))
-      .orderBy(quizzes.createdAt);
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Record not found
+      throw error;
+    }
+
+    return this.mapQuizFromDB(quiz);
+  }
+
+  async updateQuizScore(id: number, score: number): Promise<Quiz> {
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
+      .update({ score })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapQuizFromDB(quiz);
+  }
+
+  private mapQuizFromDB(quiz: any): Quiz {
+    return {
+      id: quiz.id,
+      subject: quiz.subject,
+      gradeLevel: quiz.grade_level,
+      materials: quiz.materials,
+      questions: quiz.questions,
+      score: quiz.score,
+      created_at: quiz.created_at,
+    };
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new Storage();
