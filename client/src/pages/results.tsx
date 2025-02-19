@@ -43,7 +43,7 @@ export default function ResultsPage() {
       <Card className="w-full max-w-lg text-center animate-fade-in">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            {quiz.score >= 85 ? (
+            {(quiz.score ?? 0) >= 85 ? (
               <Trophy className="w-16 h-16 text-[#FCC419] animate-bounce" />
             ) : (
               <Trophy className="w-16 h-16 text-[#4263EB]" />
@@ -56,7 +56,7 @@ export default function ResultsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-4xl font-bold animate-number">
-            {quiz.score}%
+            {quiz.score ?? 0}%
           </div>
 
           <div className="text-gray-600">

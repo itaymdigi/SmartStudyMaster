@@ -9,7 +9,12 @@ class Storage {
         subject: data.subject,
         grade_level: data.gradeLevel,
         materials: data.materials,
-        questions: data.questions,
+        questions: data.questions as {
+          question: string;
+          options: string[];
+          correctAnswer: number;
+          explanation: string;
+        }[],
       })
       .select()
       .single();
