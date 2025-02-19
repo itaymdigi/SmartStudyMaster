@@ -55,9 +55,13 @@ export default function ResultsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="text-4xl font-bold animate-number">
-            {quiz.score ?? 0}%
-          </div>
+          {quiz?.score !== null ? (
+            <div className="text-4xl font-bold animate-number">
+              {quiz.score}%
+            </div>
+          ) : (
+            <div>Score not available</div>
+          )}
 
           <div className="text-gray-600">
             {(quiz.score ?? 0) >= 85 ? (
