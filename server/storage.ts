@@ -1,8 +1,8 @@
 import { supabase } from './db';
-import type { Quiz } from './db';
+import type { Quiz, DBQuiz, CreateQuizInput, QuizQuestion } from './db';
 
 class Storage {
-  async createQuiz(data: Omit<Quiz, 'id' | 'created_at'>): Promise<Quiz> {
+  async createQuiz(data: CreateQuizInput): Promise<Quiz> {
     const { data: quiz, error } = await supabase
       .from('quizzes')
       .insert({
@@ -10,7 +10,8 @@ class Storage {
         grade_level: data.gradeLevel,
         materials: data.materials,
         questions: JSON.stringify(data.questions),
-      })
+        score: data.score ?? null,
+      } as Partial<DBQuiz>)
       .select()
       .single();
 
@@ -45,16 +46,14 @@ class Storage {
     return this.mapQuizFromDB(quiz);
   }
 
-  private mapQuizFromDB(quiz: any): Quiz {
+  private mapQuizFromDB(quiz: DBQuiz): Quiz {
     return {
       id: quiz.id,
       subject: quiz.subject,
       gradeLevel: quiz.grade_level,
       materials: quiz.materials,
-      questions: typeof quiz.questions === 'string' 
-        ? JSON.parse(quiz.questions) 
-        : quiz.questions,
-      score: quiz.score ?? null,
+      questions: JSON.parse(quiz.questions) as QuizQuestion[],
+      score: quiz.score,
       created_at: quiz.created_at,
     };
   }

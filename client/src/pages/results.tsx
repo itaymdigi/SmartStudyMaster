@@ -43,7 +43,7 @@ export default function ResultsPage() {
       <Card className="w-full max-w-lg text-center animate-fade-in">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            {((quiz?.score ?? 0) >= 85) ? (
+            {quiz?.score !== null && quiz.score >= 85 ? (
               <Trophy className="w-16 h-16 text-[#FCC419] animate-bounce" />
             ) : (
               <Trophy className="w-16 h-16 text-[#4263EB]" />
@@ -64,9 +64,11 @@ export default function ResultsPage() {
           )}
 
           <div className="text-gray-600">
-            {((quiz?.score ?? 0) >= 85) ? (
+            {quiz?.score === null ? (
+              "Score not available"
+            ) : quiz.score >= 85 ? (
               "Excellent work! You've mastered this subject!"
-            ) : ((quiz?.score ?? 0) >= 70) ? (
+            ) : quiz.score >= 70 ? (
               "Good job! Keep practicing to improve your score."
             ) : (
               "Keep studying! Practice makes perfect."
