@@ -60,9 +60,9 @@ export default function ResultsPage() {
           </div>
 
           <div className="text-gray-600">
-            {quiz.score >= 85 ? (
+            {(quiz.score ?? 0) >= 85 ? (
               "Excellent work! You've mastered this subject!"
-            ) : quiz.score >= 70 ? (
+            ) : (quiz.score ?? 0) >= 70 ? (
               "Good job! Keep practicing to improve your score."
             ) : (
               "Keep studying! Practice makes perfect."

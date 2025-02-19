@@ -35,6 +35,21 @@ export const studyFormSchema = z.object({
   studyMode: z.boolean().optional()
 });
 
-export type Quiz = typeof quizzes.$inferSelect;
+export type Quiz = {
+  id: number;
+  subject: string;
+  gradeLevel: string;
+  materials: string;
+  questions: {
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    explanation: string;
+  }[];
+  score: number | null;
+  timeSpent?: number | null;
+  created_at?: string;
+};
+
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 export type StudyForm = z.infer<typeof studyFormSchema>;
