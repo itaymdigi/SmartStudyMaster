@@ -9,12 +9,7 @@ class Storage {
         subject: data.subject,
         grade_level: data.gradeLevel,
         materials: data.materials,
-        questions: data.questions as {
-          question: string;
-          options: string[];
-          correctAnswer: number;
-          explanation: string;
-        }[],
+        questions: JSON.stringify(data.questions),
       })
       .select()
       .single();
@@ -56,8 +51,10 @@ class Storage {
       subject: quiz.subject,
       gradeLevel: quiz.grade_level,
       materials: quiz.materials,
-      questions: quiz.questions,
-      score: quiz.score,
+      questions: typeof quiz.questions === 'string' 
+        ? JSON.parse(quiz.questions) 
+        : quiz.questions,
+      score: quiz.score ?? null,
       created_at: quiz.created_at,
     };
   }
