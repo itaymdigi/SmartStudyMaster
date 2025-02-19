@@ -25,6 +25,7 @@
     "NODE_ENV": "production",
     "SUPABASE_URL": "@supabase_url",
     "SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "DEEPSEEK_API_KEY": "@deepseek_api_key"
+    "DEEPSEEK_API_KEY": "@deepseek_api_key",
+    "DATABASE_URL": "@database_url"
   }
 } 
